@@ -684,10 +684,10 @@ async def auth_callback(code: str, state: str | None = None):
             store["owner_email"] = get_owner_email(creds)
         except Exception:
             pass
-        # Broadcast to any open WS tabs, then redirect the callback tab back to dashboard
+        # Broadcast to any open WS tabs, then return the browser to the React app.
         await broadcast({"type": "auth", "status": "ok", "email": store["owner_email"]})
-        # Redirect user back to dashboard — page will reload and checkAuth() will see token.json
-        return RedirectResponse(url="/?auth=success")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+        return RedirectResponse(url=f"{frontend_url}/?auth=success")
     except Exception as e:
         return HTMLResponse(f"""<html><body style="background:#07080d;color:#dde0ef;
         font-family:sans-serif;display:flex;align-items:center;justify-content:center;

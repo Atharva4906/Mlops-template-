@@ -7,7 +7,9 @@ async function req(path, opts = {}) {
 }
 
 // Auth
-export const login = () => req('/auth/login')
+export const login = () => {
+  window.location.assign('/auth/login')
+}
 export const callback = (code, state) => req(`/auth/callback?code=${code}&state=${state}`)
 export const getAuthStatus = () => req('/auth/status')
 

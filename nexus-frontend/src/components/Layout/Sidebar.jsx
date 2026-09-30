@@ -5,6 +5,7 @@ import {
   X, Upload, CalendarRange, Map, Bot, Brain 
 } from 'lucide-react'
 import { useApp } from '../../context/AppContext'
+import { login } from '../../services/api'
 
 const NAV_GROUPS = [
   {
@@ -129,17 +130,28 @@ export default function Sidebar({ mobileOpen, onClose }) {
         {/* Status Footer */}
         <div className="p-4 border-t border-brand-border bg-[#080808] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#00ff9d] shadow-[0_0_8px_rgba(0,255,157,0.5)]" />
+            <div className={`shrink-0 w-1.5 h-1.5 rounded-full ${state.authenticated ? 'bg-[#00ff9d] shadow-[0_0_8px_rgba(0,255,157,0.5)]' : 'bg-amber-400'}`} />
             <div className="min-w-0">
-              <div className="font-space text-[9px] uppercase text-[#00ff9d]/80 leading-none tracking-wider">Node Online</div>
-              {email && (
+              <div className={`font-space text-[9px] uppercase leading-none tracking-wider ${state.authenticated ? 'text-[#00ff9d]/80' : 'text-amber-400'}`}>
+                {state.authenticated ? 'Google Connected' : 'Google Not Connected'}
+              </div>
+              {state.authenticated && email && (
                 <div className="font-space text-[8px] text-brand-muted truncate mt-1 opacity-50 lowercase">{email}</div>
               )}
             </div>
           </div>
-          <div className="shrink-0 w-8 h-1 rounded-full bg-white/5 overflow-hidden">
-            <div className="h-full bg-brand-blue w-1/3 animate-pulse" />
-          </div>
+          {state.authenticated ? (
+            <div className="shrink-0 w-8 h-1 rounded-full bg-white/5 overflow-hidden">
+              <div className="h-full bg-brand-blue w-1/3 animate-pulse" />
+            </div>
+          ) : (
+            <button
+              onClick={login}
+              className="shrink-0 border border-brand-blue/50 px-2.5 py-1.5 font-space text-[9px] uppercase tracking-wider text-brand-blue hover:bg-brand-blue hover:text-black transition-colors"
+            >
+              Login
+            </button>
+          )}
         </div>
       </div>
     </>

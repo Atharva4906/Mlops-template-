@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-d
 import { useState, useEffect } from 'react'
 import { AppProvider, useApp } from './context/AppContext'
 import WebSocketProvider from './context/WebSocketProvider'
+import { getAuthStatus } from './services/api'
 import ToastContainer from './components/ui/ToastContainer'
 import { Menu } from 'lucide-react'
 
@@ -54,8 +55,17 @@ function IntroLoader() {
 }
 
 function LayoutShell() {
+  const { dispatch } = useApp()
   const location = useLocation()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  useEffect(() => {
+    getAuthStatus()
+      .then(({ authenticated, email }) => {
+        dispatch({ type: 'SET_AUTH', authenticated: Boolean(authenticated), email })
+      })
+      .catch(() => {})
+  }, [dispatch])
 
   /* Close mobile nav on route change */
   useEffect(() => { setMobileNavOpen(false) }, [location.pathname])
