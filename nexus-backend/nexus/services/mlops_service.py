@@ -22,10 +22,13 @@ import numpy as np
 from services import db_service
 
 ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 ARTIFACT_DIR = ROOT / "mlops_artifacts"
 DATASET_PATH = ARTIFACT_DIR / "resolved_tickets.jsonl"
 MODEL_PATH = ARTIFACT_DIR / "ticket_routing_challenger.joblib"
 STATE_PATH = ARTIFACT_DIR / "mlops_state.json"
+DVC_PROJECT_PATH = Path(os.getenv("DVC_PROJECT_PATH", str(REPOSITORY_ROOT)))
+DVC_DATASET_PATH = DATASET_PATH.relative_to(DVC_PROJECT_PATH)
 MIN_DRIFT_SAMPLES = max(int(os.getenv("MLOPS_MIN_DRIFT_SAMPLES", "10")), 2)
 ARTIFACT_DIR.mkdir(exist_ok=True)
 
@@ -101,7 +104,7 @@ def collect_metrics(tickets: list[dict[str, Any]]) -> dict[str, Any]:
         "drift": drift,
         "current_mlflow_model_version": state.get("champion_version", "not_configured"),
         "mlflow_enabled": bool(os.getenv("MLFLOW_TRACKING_URI")),
-        "dvc_enabled": (ROOT / ".dvc").exists(),
+        "dvc_enabled": _dvc_repository_ready() and _optional_available("dvc"),
         "evidently_enabled": _optional_available("evidently"),
         "evidently_ready": drift_ready and _optional_available("evidently"),
         "drift_ready": drift_ready,
@@ -118,6 +121,31 @@ def _optional_available(module_name: str) -> bool:
         return True
     except (ImportError, AttributeError, ModuleNotFoundError):
         return False
+
+
+def _dvc_repository_ready() -> bool:
+    return (DVC_PROJECT_PATH / ".dvc" / "config").exists()
+
+
+def _version_dataset_with_dvc() -> dict[str, Any]:
+    if not _dvc_repository_ready():
+        return {"enabled": False, "status": "not_initialized"}
+    try:
+        result = subprocess.run(
+            ["dvc", "add", str(DVC_DATASET_PATH)],
+            cwd=DVC_PROJECT_PATH,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        print(f"[MLOps] DVC executable unavailable: {exc}")
+        return {"enabled": True, "status": "unavailable", "detail": str(exc)}
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        print(f"[MLOps] DVC dataset versioning failed: {detail}")
+        return {"enabled": True, "status": "error", "detail": detail}
+    return {"enabled": True, "status": "versioned", "path": str(DVC_DATASET_PATH)}
 
 
 def evaluate_drift(tickets: list[dict[str, Any]]) -> dict[str, Any]:
@@ -271,11 +299,14 @@ def retrain(tickets: list[dict[str, Any]]) -> dict[str, Any]:
             client.set_registered_model_alias(model_name, "Champion", latest_version)
         except (ImportError, OSError, RuntimeError, ValueError) as exc:
             print(f"[MLOps] Champion alias update unavailable: {exc}")
-    try:
-        subprocess.run(["dvc", "add", str(DATASET_PATH)], cwd=ROOT, check=False, capture_output=True, text=True)
-    except OSError:
-        pass
-    return {"status": "completed", "version": version, "weighted_f1": round(f1, 5), "rows": len(records)}
+    dvc_result = _version_dataset_with_dvc()
+    return {
+        "status": "completed",
+        "version": version,
+        "weighted_f1": round(f1, 5),
+        "rows": len(records),
+        "dvc": dvc_result,
+    }
 
 
 def promote_challenger() -> dict[str, Any]:

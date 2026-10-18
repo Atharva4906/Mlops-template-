@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createTicket, getEmails, getQueues, getTicketDomains, getTickets, reassignTicket, updateTicketStatus } from '../services/api'
+import { createTicket, getEmails, getQueues, getTicket, getTicketDomains, getTickets, reassignTicket, updateTicketStatus } from '../services/api'
 import { useApp } from '../context/AppContext'
 
 const tone = {
@@ -91,13 +91,18 @@ export default function TicketQueue() {
   const [queues, setQueues] = useState([])
   const [domains, setDomains] = useState([])
   const [domain, setDomain] = useState('')
+  const [status, setStatus] = useState('')
   const [simulator, setSimulator] = useState({ channel: 'webhook', subject: '', content: '' })
   const [submitting, setSubmitting] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const filters = { ...(queue ? { specialist_queue: queue } : {}), ...(domain ? { domain } : {}) }
+      const filters = {
+        ...(queue ? { specialist_queue: queue } : {}),
+        ...(domain ? { domain } : {}),
+        ...(status ? { status } : {}),
+      }
       await getEmails(10)
       const [ticketResponse, queueResponse, domainResponse] = await Promise.all([getTickets(filters), getQueues(), getTicketDomains()])
       dispatch({ type: 'SET_TICKETS', tickets: ticketResponse.tickets || [] })
@@ -111,7 +116,16 @@ export default function TicketQueue() {
     }
   }
 
-  useEffect(() => { load() }, [queue, domain])
+  useEffect(() => { load() }, [queue, domain, status])
+
+  useEffect(() => {
+    if (!selectedId) return
+    getTicket(selectedId)
+      .then(response => {
+        if (response.ticket) dispatch({ type: 'UPDATE_TICKET', ticket: response.ticket })
+      })
+      .catch(() => toast?.('Unable to refresh ticket details', 'warn'))
+  }, [selectedId, dispatch, toast])
 
   const tickets = state?.tickets || []
   const selected = tickets.find(ticket => ticket.id === selectedId) || tickets[0]
@@ -178,6 +192,13 @@ export default function TicketQueue() {
           <select value={domain} onChange={event => setDomain(event.target.value)} className={selectCls}>
             <option value="">All domains</option>
             {domains.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+          </select>
+          <select value={status} onChange={event => setStatus(event.target.value)} className={selectCls}>
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="escalated">Escalated</option>
           </select>
           <button
             onClick={load}

@@ -9,6 +9,12 @@ The primary runnable stack in this repository is:
 
 Other folders include ticket-routing assets, static front-end experiments, and a Chrome extension for meeting capture/transcription.
 
+## Documentation
+
+The complete product, implementation, use-case, MLOps, workflow, future-scope,
+and PRD documentation is available in the [docs/](./docs/) folder. Start with
+the [documentation index](./docs/README.md).
+
 ## Architecture
 
 ```mermaid
@@ -77,6 +83,27 @@ npm run dev
 Frontend runs on `http://localhost:5173`.
 
 Vite is configured to proxy `/api`, `/auth`, and `/ws` to the backend on port `8000`.
+
+### Dataset versioning with DVC
+
+The repository uses DVC for the resolved-ticket training dataset. The pointer
+file is committed at
+`nexus-backend/nexus/mlops_artifacts/resolved_tickets.jsonl.dvc`; the dataset
+content is stored by DVC rather than directly in Git.
+
+For local development, the default DVC remote is the ignored `dvc-storage/`
+folder in this repository:
+
+```powershell
+dvc status
+dvc push
+dvc pull
+```
+
+This local remote is suitable for the current single-machine workflow. A
+future shared remote can be supplied through the `DVC_REMOTE_URL` GitHub
+Actions secret. CI skips dataset pulling when that secret is not configured
+because a local workstation folder is not available on GitHub-hosted runners.
 
 ## CI/CD
 

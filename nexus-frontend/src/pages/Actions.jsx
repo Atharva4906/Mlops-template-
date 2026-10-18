@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import { getActions, approveAction, rejectAction } from '../services/api'
-import { Activity, CheckCircle2, XCircle, Clock, Loader2, MailCheck, AlertTriangle, Shield, FileText } from 'lucide-react'
+import { Activity, CheckCircle2, XCircle, Clock, Loader2, MailCheck, AlertTriangle, Shield } from 'lucide-react'
 
 // Helper to format time cleanly
 const FT = iso => {
@@ -13,7 +13,6 @@ const FT = iso => {
 
 // Polished, muted accent colors instead of bright raw neons
 const INTENT_THEME = {
-  brd: { text: '#a78bfa', bg: 'rgba(167, 139, 250, 0.1)', border: 'rgba(167, 139, 250, 0.2)' },
   schedule: { text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.2)' },
   escalate: { text: '#fb7185', bg: 'rgba(251, 113, 133, 0.1)', border: 'rgba(251, 113, 133, 0.2)' },
   status: { text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.2)' },
@@ -45,8 +44,6 @@ function ActionRow({ action, globalIdx, onUpdate }) {
   const isEscalated = ESCALATED_STATUSES.includes(a.status)
   const isFlagged = a.status === 'pending_escalation'
   const canReview = ['pending', 'escalated', 'pending_escalation'].includes(a.status)
-  // BRD generation is intentionally disabled for the ticket-routing product.
-  const canGenerateBrd = false
   const sm = STATUS_META[a.status] || STATUS_META.pending
   const intTheme = INTENT_THEME[a.intent] || INTENT_THEME.general
   const confidence = a.agent_state?.confidence ?? a.confidence
@@ -77,22 +74,6 @@ function ActionRow({ action, globalIdx, onUpdate }) {
       setTimeout(() => onUpdate?.(), 320)
     } catch {}
   }
-
-  /* const handleGenerateBrd = async (e) => {
-    e.stopPropagation()
-    setApproving(true)
-    try {
-      const r = await generateBrdForAction(a.id)
-      if (r.error) { toast?.(r.error, 'warn'); setApproving(false); return }
-      toast?.('BRD generation started', 'ok')
-      setDismissing('approve')
-      setTimeout(() => onUpdate?.(), 320)
-    } catch {
-      toast?.('Failed to start BRD', 'warn')
-    } finally {
-      setApproving(false)
-    }
-  } */
 
   return (
     <div
@@ -242,27 +223,8 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                 </div>
               )}
 
-              {/*
-              {(a.brd_job_id || a.brd_final) && (
-                <div className="mt-4 p-3 rounded-lg border border-white/10 bg-white/5 font-sans text-sm flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-purple-400 border border-purple-400/20 bg-purple-400/10 px-2 py-0.5 rounded font-medium">BRD</span>
-                    <span className="text-zinc-300">{a.brd_final?.title || 'Document is ready to download'}</span>
-                  </div>
-                  {a.brd_job_id && (
-                    <button
-                      onClick={() => window.open(`/api/brd/${a.brd_job_id}/download`, '_blank')}
-                      className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-md font-mono text-[11px] uppercase tracking-wider font-medium transition-colors border border-white/10"
-                    >
-                      Download PDF
-                    </button>
-                  )}
-                </div>
-              )}
-              */}
-
               {/* Action Buttons */}
-              {(canReview || canGenerateBrd) && (
+              {canReview && (
                 <div className="flex items-center gap-3 mt-6 flex-wrap pt-4 border-t border-white/5">
                   {canReview && (
                     <button
@@ -273,15 +235,6 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                       {approving ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><MailCheck size={16} /> Approve & Send</>}
                     </button>
                   )}
-                  {/* {canGenerateBrd && (
-                    <button
-                      onClick={handleGenerateBrd}
-                      disabled={approving}
-                      className="flex items-center gap-2 border border-white/10 text-zinc-300 bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-lg font-sans text-sm font-medium transition-colors"
-                    >
-                      <FileText size={16} className="text-purple-400" /> Generate BRD
-                    </button>
-                  )} */}
                   {canReview && (
                     <button
                       onClick={handleReject}

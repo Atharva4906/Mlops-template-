@@ -190,12 +190,6 @@ export default function Settings() {
               badgeText="Recommended"
               isRequired={true}
             />
-            <ProtocolSwitch 
-              title="BRD Extraction"
-              description="Silent monitoring for requirements keywords to trigger the agent-6 pipeline."
-              checked={brdAutoDetect}
-              onChange={setBrdAutoDetect}
-            />
           </section>
         </div>
 

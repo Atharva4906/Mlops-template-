@@ -1,0 +1,5 @@
+outs:
+- md5: bd80488e367d01354c5e70d02864d83d
+  size: 3358
+  hash: md5
+  path: resolved_tickets.jsonl

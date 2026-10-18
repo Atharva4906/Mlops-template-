@@ -29,10 +29,17 @@ const NAV_GROUPS = [
     ]
   },
   {
+    label: 'Operations',
+    items: [
+      { name: 'Action Center', path: '/actions' },
+      { name: 'Calendar Operations', path: '/calendar' },
+    ]
+  },
+  {
     label: 'System',
     items: [
       { name: 'Ticket Domains', path: '/ticket-domains' },
-      { name: 'Agent Directives', path: '/settings' },
+      { name: 'Agent Directives', path: '/directives' },
     ]
   },
 ]
@@ -59,34 +66,50 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[4998] lg:hidden" onClick={onClose} />
-      )}
-
+      {/* Backdrop: click anywhere outside the drawer to close it */}
       <div
-        className={`fixed top-0 left-0 w-[260px] h-screen border-r border-zinc-200 z-[5000] flex flex-col overflow-hidden transition-transform duration-300
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0`}
+        className={`fixed inset-0 z-[4998] bg-black/25 backdrop-blur-sm transition-opacity duration-300 ${mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Slide-in drawer */}
+      <div
+        aria-hidden={!mobileOpen}
+        className={`fixed top-0 left-0 w-[280px] max-w-[85vw] h-screen border-r border-zinc-200 z-[5000] flex flex-col overflow-hidden transition-[transform,visibility,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]
+          ${mobileOpen ? 'translate-x-0 visible shadow-[0_0_70px_rgba(0,0,0,0.25)]' : '-translate-x-full invisible'}`}
         style={{ background: 'linear-gradient(180deg, #fbfbfd 0%, #f1f2f6 100%)', fontFamily: FONT }}
       >
         <style>{SIDEBAR_CSS}</style>
         <div className="pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full bg-sky-300/30 blur-3xl" aria-hidden="true" />
         <div className="pointer-events-none absolute bottom-20 -right-20 w-56 h-56 rounded-full bg-violet-300/20 blur-3xl" aria-hidden="true" />
 
-        {/* Brand */}
-        <div className="relative px-6 pt-7 pb-5 sb-in">
-          <div className="text-[19px] font-semibold tracking-tight leading-tight bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}>
-            Ticket Routing System
+        {/* Brand + close */}
+        <div className="relative px-6 pt-7 pb-5 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[19px] font-semibold tracking-tight leading-tight bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}>
+              Ticket Routing System
+            </div>
+            <div className="text-[12px] text-zinc-500 mt-1">
+              AI Agent Platform
+            </div>
           </div>
-          <div className="text-[12px] text-zinc-500 mt-1">
-            AI Agent Platform
-          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 px-3 py-1.5 rounded-full bg-white ring-1 ring-black/[0.08] shadow-sm text-[12px] font-medium text-zinc-600 hover:bg-[#f5f5f7] active:scale-95 transition-all duration-200 cursor-pointer"
+          >
+            Close
+          </button>
         </div>
 
         {/* Navigation */}
         <div className="relative flex-1 overflow-y-auto pb-2 custom-scrollbar">
           {NAV_GROUPS.map((group, gi) => (
-            <div key={group.label} className="mb-4 sb-in" style={{ animationDelay: `${80 + gi * 70}ms` }}>
+            <div
+              key={group.label}
+              className="mb-4"
+              style={mobileOpen ? { animation: `sb-in .45s cubic-bezier(.2,.8,.2,1) ${60 + gi * 60}ms both` } : undefined}
+            >
               <div className="px-6 mb-1.5 text-[12px] font-semibold text-zinc-400">
                 {group.label}
               </div>

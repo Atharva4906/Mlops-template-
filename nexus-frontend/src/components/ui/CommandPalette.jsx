@@ -68,7 +68,7 @@ export default function CommandPalette() {
         { label: 'Escalations',      shortcut: 'G E', action: () => { navigate('/escalations'); setOpen(false) } },
         { label: 'Metrics',          shortcut: 'G M', action: () => { navigate('/metrics'); setOpen(false) } },
         { label: 'Inbox',            shortcut: 'G I', action: () => { navigate('/inbox'); setOpen(false) } },
-        { label: 'Agent Directives', shortcut: 'G S', action: () => { navigate('/settings'); setOpen(false) } },
+        { label: 'Agent Directives', shortcut: 'G S', action: () => { navigate('/directives'); setOpen(false) } },
       ]
     },
   ]

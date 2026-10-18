@@ -60,3 +60,6 @@ chrome-recording-transcription-extension/build/
 *.sln
 *.sw?
 chrome-recording-transcription-extension
+
+# Local DVC remote storage
+dvc-storage/
