@@ -1,91 +1,96 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, FolderKanban, Settings2, Activity, 
-  AlertTriangle, BarChart2, Inbox, FileText, Command, 
-  X, Upload, CalendarRange, Map, Bot, Brain 
-} from 'lucide-react'
 import { useApp } from '../../context/AppContext'
-import { login } from '../../services/api'
+import { login, logout } from '../../services/api'
 
 const NAV_GROUPS = [
   {
     label: 'Core',
     items: [
-      { name: 'Command Center', path: '/', icon: LayoutDashboard },
+      { name: 'Command Center', path: '/' },
     ]
   },
   {
-    label: 'Workflow',
+    label: 'Ingestion',
     items: [
-      { name: 'Inbox', path: '/inbox', icon: Inbox },
-      { name: 'Actions', path: '/actions', icon: Activity },
-      { name: 'BRDs', path: '/brds', icon: FileText },
-      { name: 'Calendar', path: '/calendar', icon: CalendarRange },
+      { name: 'Email', path: '/email' },
+      { name: 'Chat Ingestion', path: '/chat' },
+      { name: 'Showcasing', path: '/showcase' },
     ]
   },
   {
-    label: 'Operations',
+    label: 'Ticket Routing',
     items: [
-      { name: 'Escalations', path: '/escalations', icon: AlertTriangle },
-      { name: 'Project Map', path: '/map', icon: Map },
-      { name: 'Project Studio', path: '/projects', icon: FolderKanban },
-      { name: 'Upload Resources', path: '/upload', icon: Upload },
-    ]
-  },
-  {
-    label: 'Intelligence',
-    items: [
-      { name: 'Metrics', path: '/metrics', icon: BarChart2 },
-      { name: 'Bandit Lab', path: '/bandit', icon: Brain },
-      { name: 'Assistant', path: '/assistant', icon: Bot },
+      { name: 'Specialist Queue', path: '/inbox' },
+      { name: 'Ticket Simulator', path: '/ticket-simulator' },
+      { name: 'Escalations', path: '/escalations' },
+      { name: 'Metrics', path: '/metrics' },
+      { name: 'MLOps Lifecycle', path: '/mlops' },
+      { name: 'Assistant', path: '/assistant' },
     ]
   },
   {
     label: 'System',
     items: [
-      { name: 'Agent Directives', path: '/settings', icon: Settings2 },
+      { name: 'Ticket Domains', path: '/ticket-domains' },
+      { name: 'Agent Directives', path: '/settings' },
     ]
   },
 ]
 
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif'
+
+const SIDEBAR_CSS = `
+@keyframes sb-in { from { opacity: 0; transform: translateX(-10px) } to { opacity: 1; transform: none } }
+.sb-in { animation: sb-in .45s cubic-bezier(.2,.8,.2,1) both }
+@media (prefers-reduced-motion: reduce) { .sb-in { animation: none !important } }
+`
+
 export default function Sidebar({ mobileOpen, onClose }) {
-  const { state } = useApp()
+  const { state, dispatch } = useApp()
   const location = useLocation()
-  const email = state?.ownerEmail || ''
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      dispatch({ type: 'SET_AUTH', authenticated: false, email: '' })
+    }
+  }
 
   return (
     <>
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[4998] lg:hidden" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[4998] lg:hidden" onClick={onClose} />
       )}
 
       <div
-        className={`fixed top-0 left-0 w-[260px] h-screen border-r border-brand-border z-[5000] flex flex-col overflow-hidden transition-transform duration-300
+        className={`fixed top-0 left-0 w-[260px] h-screen border-r border-zinc-200 z-[5000] flex flex-col overflow-hidden transition-transform duration-300
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
-        style={{ background: '#050505' }}
+        style={{ background: 'linear-gradient(180deg, #fbfbfd 0%, #f1f2f6 100%)', fontFamily: FONT }}
       >
-        {/* Brand Section */}
-        <div className="px-7 pt-7 pb-4 border-b border-brand-border relative z-10">
-          <div className="flex items-center gap-2">
-            <div className="font-bebas text-5xl tracking-widest text-brand-text leading-none">
-              Codeapex<span className="text-brand-blue">.</span>
-            </div>
-            <div className="pulse-dot w-2 h-2 rounded-full bg-brand-blue mt-1 shrink-0" style={{ boxShadow: '0 0 6px rgba(0,181,226,0.8)' }} />
+        <style>{SIDEBAR_CSS}</style>
+        <div className="pointer-events-none absolute -top-24 -left-16 w-64 h-64 rounded-full bg-sky-300/30 blur-3xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-20 -right-20 w-56 h-56 rounded-full bg-violet-300/20 blur-3xl" aria-hidden="true" />
+
+        {/* Brand */}
+        <div className="relative px-6 pt-7 pb-5 sb-in">
+          <div className="text-[19px] font-semibold tracking-tight leading-tight bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}>
+            Ticket Routing System
           </div>
-          <div className="font-space text-[9px] uppercase tracking-[0.22em] text-brand-muted mt-1.5 opacity-60">
+          <div className="text-[12px] text-zinc-500 mt-1">
             AI Agent Platform
           </div>
         </div>
 
-        {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto relative z-10 pt-4 pb-2 custom-scrollbar">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="mb-3"> {/* Tightened group spacing */}
-              <div className="px-6 mb-1 text-[9px] font-space uppercase tracking-[0.25em] text-brand-muted/30">
+        {/* Navigation */}
+        <div className="relative flex-1 overflow-y-auto pb-2 custom-scrollbar">
+          {NAV_GROUPS.map((group, gi) => (
+            <div key={group.label} className="mb-4 sb-in" style={{ animationDelay: `${80 + gi * 70}ms` }}>
+              <div className="px-6 mb-1.5 text-[12px] font-semibold text-zinc-400">
                 {group.label}
               </div>
-              <div className="space-y-0.5"> {/* Minimal gap between individual links */}
+              <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = item.path === '/'
                     ? location.pathname === '/'
@@ -95,16 +100,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
                       key={item.path}
                       to={item.path}
                       onClick={onClose}
-                      className={`flex items-center gap-3.5 px-4 py-2 mx-2 rounded-sm transition-all duration-150 font-dm text-[13px] relative group
-                        ${isActive ? 'text-white bg-white/5' : 'text-brand-muted hover:text-white hover:bg-white/[0.02]'}`}
+                      className={`relative flex items-center px-3.5 py-2 mx-3 rounded-xl transition-all duration-200 text-[14px]
+                        ${isActive
+                          ? 'bg-white text-zinc-900 font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]'
+                          : 'text-zinc-600 font-medium hover:text-zinc-900 hover:bg-white/70 hover:translate-x-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)]'}`}
                     >
                       {isActive && (
-                        <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full bg-brand-blue shadow-[0_0_8px_rgba(0,181,226,0.6)]" />
+                        <span className="absolute left-1.5 top-2 bottom-2 w-[3px] rounded-full" style={{ background: 'linear-gradient(180deg, #3aa0ff, #0071e3)' }} />
                       )}
-                      <item.icon size={15} className={`shrink-0 ${isActive ? 'text-brand-blue' : 'text-inherit opacity-60 group-hover:opacity-100'}`} />
-                      <span className={`tracking-wide ${isActive ? 'font-semibold' : 'font-medium'}`}>
-                        {item.name}
-                      </span>
+                      <span className={isActive ? 'pl-2' : ''}>{item.name}</span>
                     </NavLink>
                   )
                 })}
@@ -112,44 +116,37 @@ export default function Sidebar({ mobileOpen, onClose }) {
             </div>
           ))}
 
-          {/* Command Palette - Now tucked closely beneath the nav groups */}
-          <div className="mx-4 mt-2">
+          {/* Command Palette */}
+          <div className="mx-3 mt-1">
             <button
               onClick={() => { window.dispatchEvent(new CustomEvent('nexus:openPalette')); onClose?.() }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-sm border border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-blue/30 transition-all group bg-[#0a0a0a]/50"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-white/80 backdrop-blur ring-1 ring-black/[0.06] text-zinc-600 hover:text-zinc-900 hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.09)] active:scale-[0.98] transition-all duration-200 text-[13px] font-medium cursor-pointer"
             >
-              <div className="flex items-center gap-2 font-space text-[10px] uppercase tracking-widest">
-                <Command size={12} className="group-hover:text-brand-blue transition-colors" />
-                Command Palette
-              </div>
-              <span className="font-space text-[9px] text-brand-muted/40 border border-brand-border/50 px-1.5 py-0.5 rounded-sm bg-black">⌘K</span>
+              <span>Command Palette</span>
+              <span className="text-[11px] text-zinc-400 bg-[#f5f5f7] px-1.5 py-0.5 rounded-md">⌘K</span>
             </button>
           </div>
         </div>
 
-        {/* Status Footer */}
-        <div className="p-4 border-t border-brand-border bg-[#080808] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`shrink-0 w-1.5 h-1.5 rounded-full ${state.authenticated ? 'bg-[#00ff9d] shadow-[0_0_8px_rgba(0,255,157,0.5)]' : 'bg-amber-400'}`} />
-            <div className="min-w-0">
-              <div className={`font-space text-[9px] uppercase leading-none tracking-wider ${state.authenticated ? 'text-[#00ff9d]/80' : 'text-amber-400'}`}>
-                {state.authenticated ? 'Google Connected' : 'Google Not Connected'}
-              </div>
-              {state.authenticated && email && (
-                <div className="font-space text-[8px] text-brand-muted truncate mt-1 opacity-50 lowercase">{email}</div>
-              )}
-            </div>
+        {/* Status footer */}
+        <div className="relative p-4 border-t border-black/[0.07] bg-white/50 backdrop-blur-xl flex items-center justify-between gap-3">
+          <div className={`text-[12px] font-medium ${state.authenticated ? 'text-emerald-700' : 'text-amber-600'}`}>
+            {state.authenticated ? 'Google connected' : 'Google not connected'}
           </div>
           {state.authenticated ? (
-            <div className="shrink-0 w-8 h-1 rounded-full bg-white/5 overflow-hidden">
-              <div className="h-full bg-brand-blue w-1/3 animate-pulse" />
-            </div>
+            <button
+              onClick={handleLogout}
+              className="shrink-0 px-3.5 py-1.5 rounded-full bg-white ring-1 ring-black/[0.06] text-[12px] font-medium text-red-600 hover:bg-red-50 hover:-translate-y-0.5 active:scale-95 transition-all duration-200 cursor-pointer"
+            >
+              Log out
+            </button>
           ) : (
             <button
               onClick={login}
-              className="shrink-0 border border-brand-blue/50 px-2.5 py-1.5 font-space text-[9px] uppercase tracking-wider text-brand-blue hover:bg-brand-blue hover:text-black transition-colors"
+              style={{ background: 'linear-gradient(135deg, #3aa0ff, #0071e3)' }}
+              className="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-medium text-white shadow-[0_4px_12px_rgba(0,113,227,0.35)] hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,113,227,0.45)] active:scale-95 transition-all duration-200 cursor-pointer"
             >
-              Login
+              Log in
             </button>
           )}
         </div>

@@ -1,13 +1,13 @@
 # Email-AIAgent
 
-Multi-module repository for AI-assisted email operations, project clustering, and BRD generation.
+Multi-module repository for AI-assisted email operations, multi-channel ingestion, and ticket routing.
 
 The primary runnable stack in this repository is:
 
 - **Backend:** FastAPI service in `nexus-backend/nexus`
 - **Frontend:** React + Vite app in `nexus-frontend`
 
-Other folders include BRD prototypes, static front-end experiments, and a Chrome extension for meeting capture/transcription.
+Other folders include ticket-routing assets, static front-end experiments, and a Chrome extension for meeting capture/transcription.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ Other folders include BRD prototypes, static front-end experiments, and a Chrome
 flowchart LR
   A[Gmail + Multi-channel Inputs] --> B[FastAPI Backend]
   B --> C[Project Clustering]
-  B --> D[BRD Generation Pipeline]
+  B --> D[Ticket Routing]
   B --> E[Calendar + Action Automation]
   B --> F[WebSocket Live Updates]
   C --> G[React Dashboard]
@@ -26,13 +26,21 @@ flowchart LR
 
 ## Repository Layout
 
-- `nexus-backend/nexus/` - Main backend service (FastAPI, ingestion, clustering, BRD APIs)
+- `nexus-backend/nexus/` - Main backend service (FastAPI, ingestion, clustering, and ticket-routing APIs)
 - `nexus-frontend/` - Main React dashboard and operator UI
-- `brd_agent/` - Standalone BRD extraction engine (Flask API + Streamlit UI)
-- `brd-agent/` - Data/output workspace for BRD experiments
+- `nexus-backend/nexus/services/ticket_pipeline.py` - Ticket classification and routing pipeline
+- `nexus-backend/nexus/services/ticket_api.py` - Ticket-routing API helpers
 - `chrome-recording-transcription-extension/` - Chrome extension for Meet transcript + recording
 - `frontend/` - Older static UI pages
-- `BRD/`, `Informations/`, `model/` - Supporting project assets and notebooks
+- `Informations/`, `model/` - Supporting project assets and notebooks
+
+<!--
+BRD-related modules are retained for reference but are not part of the ticket-routing
+application:
+- `brd_agent/` - Standalone BRD extraction engine (Flask API + Streamlit UI)
+- `brd-agent/` - Data/output workspace for BRD experiments
+- `BRD/` - Supporting BRD assets
+-->
 
 ## Prerequisites
 
@@ -70,6 +78,29 @@ Frontend runs on `http://localhost:5173`.
 
 Vite is configured to proxy `/api`, `/auth`, and `/ws` to the backend on port `8000`.
 
+## CI/CD
+
+GitHub Actions validates the active backend and frontend on pushes and pull
+requests:
+
+- Backend dependencies are installed, Python files are compiled, and routing
+  tests run on Python 3.11.
+- Frontend dependencies are installed with `npm ci` and the production Vite
+  build runs on Node.js 20.
+
+On a successful push to `main`, the workflow builds and publishes two
+container images to GitHub Container Registry:
+
+```text
+ghcr.io/<owner>/<repository>/backend:latest
+ghcr.io/<owner>/<repository>/frontend:latest
+```
+
+Each image also receives a commit-SHA tag. Runtime credentials must be
+provided by the deployment platform or container environment; `.env` files
+are excluded from both Docker build contexts and are never read by GitHub
+Actions.
+
 ## Environment Configuration
 
 Create/update environment files before running:
@@ -94,13 +125,14 @@ The backend exposes APIs for:
 
 - Auth (`/auth/*`)
 - Email retrieval and processing (`/api/emails*`)
+- Multi-channel ingestion (`/api/ingest*`, `/api/multi-channel*`)
+- Ticket classification, queueing, and routing
 - Action lifecycle (`/api/actions*`)
 - Project CRUD and assignment (`/api/projects*`)
-- BRD generation and download (`/api/brd*`)
 - Calendar integration (`/api/calendar*`)
-- Ingest orchestration (`/api/ingest*`, `/api/multi-channel*`)
 - Live WebSocket updates (`/ws/live`)
 
+<!--
 ## Optional Modules
 
 ### BRD standalone stack (`brd_agent`)
@@ -116,6 +148,7 @@ python -m brd_agent.api
 ```powershell
 streamlit run brd_agent/frontend.py
 ```
+-->
 
 ### Chrome extension (`chrome-recording-transcription-extension`)
 
@@ -141,7 +174,7 @@ If any real API keys or OAuth secrets are present in tracked files, rotate them 
 
 - If frontend cannot reach backend, verify backend is running on port `8000`.
 - If auth flow fails, verify OAuth redirect URI matches backend callback endpoint.
-- If BRD features fail, verify provider keys/model availability and related environment variables.
+<!-- If BRD features fail, verify provider keys/model availability and related environment variables. -->
 
 ## License
 

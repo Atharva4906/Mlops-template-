@@ -4,12 +4,13 @@ const AppContext = createContext(null)
 
 const initialState = {
   actions: [],
+  tickets: [],
   emails: [],
   events: [],
-  brds: {},
+  // brds: {}, // BRD generation is inactive for ticket routing.
   authenticated: false,
   ownerEmail: '',
-  brdRunning: {},
+  // brdRunning: {},
   stats: {},
 }
 
@@ -27,6 +28,17 @@ function reducer(state, action) {
       return { ...state, events: action.events }
     case 'SET_ACTIONS':
       return { ...state, actions: action.actions }
+    case 'SET_TICKETS':
+      return { ...state, tickets: action.tickets }
+    case 'PREPEND_TICKET': {
+      const exists = state.tickets.find(ticket => ticket.id === action.ticket.id)
+      if (exists) {
+        return { ...state, tickets: state.tickets.map(ticket => ticket.id === action.ticket.id ? { ...ticket, ...action.ticket } : ticket) }
+      }
+      return { ...state, tickets: [action.ticket, ...state.tickets] }
+    }
+    case 'UPDATE_TICKET':
+      return { ...state, tickets: state.tickets.map(ticket => ticket.id === action.ticket.id ? { ...ticket, ...action.ticket } : ticket) }
     case 'PREPEND_ACTION': {
       const exists = state.actions.find(a => a.id === action.payload.id)
       if (exists) {
@@ -38,7 +50,7 @@ function reducer(state, action) {
       return { ...state, actions: state.actions.map(a => a.id === action.id ? { ...a, status: action.status } : a) }
     case 'PREPEND_EVENT':
       return { ...state, events: [action.event, ...state.events] }
-    case 'SET_BRDS':
+    /* case 'SET_BRDS':
       return { ...state, brds: action.brds }
     case 'ADD_BRD':
       return { ...state, brds: { ...state.brds, [action.jobId]: action.brd } }
@@ -48,7 +60,7 @@ function reducer(state, action) {
       const next = { ...state.brdRunning }
       delete next[action.projectId]
       return { ...state, brdRunning: next }
-    }
+    } */
     case 'CANCEL_EVENT':
       return { ...state, events: state.events.filter(e => e.id !== action.id) }
     default:

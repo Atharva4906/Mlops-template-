@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { 
-  RefreshCw, Network, ShieldCheck, ShieldAlert, 
+  RefreshCw, ShieldCheck, ShieldAlert,
   LogIn, Loader2, Zap, Cpu, Settings as SettingsIcon,
   Fingerprint, Activity
 } from 'lucide-react'
-import { getAuthStatus, scanIngest, forceRecluster, login } from '../services/api'
+import { getAuthStatus, scanIngest, login } from '../services/api'
 
 // Polished Switch Component
 function ProtocolSwitch({ title, description, checked, onChange, isRequired, badgeText }) {
@@ -67,12 +67,10 @@ export default function Settings() {
   const [autoApprove, setAutoApprove] = useState(false)
   const [autoCalendar, setAutoCalendar] = useState(true)
   const [sentiment, setSentiment] = useState(true)
-  const [brdAutoDetect, setBrdAutoDetect] = useState(true)
 
   const [authStatus, setAuthStatus] = useState(false)
   const [emailOwner, setEmailOwner] = useState('')
   const [syncing, setSyncing] = useState(false)
-  const [clustering, setClustering] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -98,14 +96,14 @@ export default function Settings() {
     setSyncing(false)
   }
 
-  const handleForceCluster = async () => {
+  /* const handleForceCluster = async () => {
     setClustering(true)
     try {
       await forceRecluster(10)
       toast('Re-clustering Sequence Active', 'ok')
     } catch { toast('Sequence Failed', 'err') }
     setClustering(false)
-  }
+  } */
 
   return (
     <div className="pb-24">
@@ -119,6 +117,7 @@ export default function Settings() {
           <h1 className="font-bebas text-[clamp(40px,7vw,84px)] leading-[0.85] tracking-tight uppercase text-white">
             Agent Directives
           </h1>
+          {/*
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -128,7 +127,7 @@ export default function Settings() {
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
               {isSaving ? 'Committing...' : 'Deploy Protocol'}
             </div>
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -179,7 +178,7 @@ export default function Settings() {
             />
             <ProtocolSwitch 
               title="Calendar Synthesis"
-              description="Direct injection of meeting signals into the Google Nexus API."
+              description="Direct injection of meeting signals into the Ticket Routing Agent Google API integration."
               checked={autoCalendar}
               onChange={setAutoCalendar}
             />
@@ -241,7 +240,7 @@ export default function Settings() {
           <section className="space-y-4">
             <div className="font-space text-[10px] tracking-[0.3em] text-red-400 uppercase mb-4">Pipeline Overrides</div>
             
-            <button 
+            <button
               onClick={handleForceSync}
               disabled={syncing}
               className="w-full flex items-center justify-between p-5 border border-brand-border bg-[#0a0a0a] hover:border-red-500/50 group transition-all"
@@ -255,7 +254,8 @@ export default function Settings() {
               </div>
             </button>
 
-            <button 
+            {/*
+            <button
               onClick={handleForceCluster}
               disabled={clustering}
               className="w-full flex items-center justify-between p-5 border border-brand-border bg-[#0a0a0a] hover:border-brand-yellow/50 group transition-all"
@@ -268,6 +268,7 @@ export default function Settings() {
                 </div>
               </div>
             </button>
+            */}
           </section>
         </div>
       </div>

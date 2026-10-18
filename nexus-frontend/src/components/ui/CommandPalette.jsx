@@ -1,11 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Search, LayoutDashboard, FolderKanban, Settings2,
-  Activity, AlertTriangle, BarChart2, Inbox, FileText,
-  FolderPlus, RefreshCw, Network, X, Folder, ArrowRight
-} from 'lucide-react'
-import { scanIngest, forceRecluster, getProjects, createProject } from '../../services/api'
+import { scanIngest, getProjects, createProject } from '../../services/api'
 import { useApp } from '../../context/AppContext'
 
 export default function CommandPalette() {
@@ -42,7 +37,6 @@ export default function CommandPalette() {
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 50)
-      getProjects().then(d => setRecentProjects((d.projects || []).slice(0, 3))).catch(() => {})
       setQuery('')
       setActiveIdx(0)
       setCreatingProject(false)
@@ -59,36 +53,35 @@ export default function CommandPalette() {
     {
       group: 'Quick Actions',
       items: [
-        { label: 'New Project', icon: FolderPlus, shortcut: '', action: () => setCreatingProject(true) },
-        { label: 'Force Ingest Sync', icon: RefreshCw, shortcut: '', action: async () => {
+        { label: 'New Project', shortcut: '', action: () => setCreatingProject(true) },
+        { label: 'Force Ingest Sync', shortcut: '', action: async () => {
           await scanIngest().catch(() => {}); toast('Ingest triggered', 'ok'); setOpen(false)
-        }},
-        { label: 'Force Re-Cluster', icon: Network, shortcut: '', action: async () => {
-          await forceRecluster(10).catch(() => {}); toast('Clustering executed', 'ok'); setOpen(false)
         }},
       ]
     },
     {
       group: 'Navigate',
       items: [
-        { label: 'Command Center', icon: LayoutDashboard, shortcut: 'G H', action: () => { navigate('/'); setOpen(false) } },
-        { label: 'Project Studio',  icon: FolderKanban,   shortcut: 'G P', action: () => { navigate('/projects'); setOpen(false) } },
-        { label: 'Actions',         icon: Activity,       shortcut: 'G A', action: () => { navigate('/actions'); setOpen(false) } },
-        { label: 'Escalations',     icon: AlertTriangle,  shortcut: 'G E', action: () => { navigate('/escalations'); setOpen(false) } },
-        { label: 'Metrics',         icon: BarChart2,      shortcut: 'G M', action: () => { navigate('/metrics'); setOpen(false) } },
-        { label: 'Inbox',           icon: Inbox,          shortcut: 'G I', action: () => { navigate('/inbox'); setOpen(false) } },
-        { label: 'BRDs',            icon: FileText,       shortcut: 'G B', action: () => { navigate('/brds'); setOpen(false) } },
-        { label: 'Agent Directives',icon: Settings2,      shortcut: 'G S', action: () => { navigate('/settings'); setOpen(false) } },
+        { label: 'Command Center',   shortcut: 'G H', action: () => { navigate('/'); setOpen(false) } },
+        { label: 'Project Studio',   shortcut: 'G P', action: () => { navigate('/projects'); setOpen(false) } },
+        { label: 'Actions',          shortcut: 'G A', action: () => { navigate('/actions'); setOpen(false) } },
+        { label: 'Escalations',      shortcut: 'G E', action: () => { navigate('/escalations'); setOpen(false) } },
+        { label: 'Metrics',          shortcut: 'G M', action: () => { navigate('/metrics'); setOpen(false) } },
+        { label: 'Inbox',            shortcut: 'G I', action: () => { navigate('/inbox'); setOpen(false) } },
+        { label: 'Agent Directives', shortcut: 'G S', action: () => { navigate('/settings'); setOpen(false) } },
       ]
     },
   ]
 
+  useEffect(() => {
+    if (open) getProjects().then(d => setRecentProjects((d.projects || []).slice(0, 3))).catch(() => {})
+  }, [open])
+
   const projectItems = recentProjects.map(p => ({
     group: 'Recent Projects',
     label: p.name || 'Unnamed Project',
-    icon: Folder,
     shortcut: '',
-    action: () => { navigate('/projects'); setOpen(false) }
+    action: () => { navigate('/projects'); setOpen(false) },
   }))
 
   /* Flatten for keyboard navigation */
@@ -132,72 +125,74 @@ export default function CommandPalette() {
     ? [{ group: 'Results', items: filtered }]
     : [
         ...STATIC_ITEMS.map(g => ({ group: g.group, items: g.items })),
-        ...(projectItems.length > 0 ? [{ group: 'Recent Projects', items: projectItems }] : [])
+        ...(projectItems.length > 0 ? [{ group: 'Recent Projects', items: projectItems }] : []),
       ]
 
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-start justify-center pt-[18vh]"
-      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(12px)' }}
+      className="fixed inset-0 z-[9999] flex items-start justify-center pt-[16vh] bg-black/25 backdrop-blur-md"
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif' }}
       onClick={() => setOpen(false)}
     >
+      <style>{`
+        @keyframes cp-in { from { opacity: 0; transform: translateY(-8px) scale(.97) } to { opacity: 1; transform: none } }
+        @media (prefers-reduced-motion: reduce) { .cp-in { animation: none !important } }
+      `}</style>
       <div
-        className="w-full max-w-[580px] mx-4 rounded-[12px] overflow-hidden"
-        style={{
-          background: '#070707',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 50px 100px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)',
-        }}
+        className="cp-in w-full max-w-[600px] mx-4 rounded-3xl overflow-hidden bg-white/90 backdrop-blur-2xl ring-1 ring-black/[0.06] shadow-[0_40px_100px_rgba(0,0,0,0.30)]"
+        style={{ animation: 'cp-in .25s cubic-bezier(.2,.8,.2,1) both' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ─── Search bar ─── */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-brand-border">
-          <Search size={16} style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-black/[0.07]">
           {creatingProject ? (
             <input
               ref={newProjRef}
               type="text"
-              placeholder="Project name..."
+              placeholder="Project name"
               value={newProjectName}
               onChange={e => setNewProjectName(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter') handleCreateProject()
                 if (e.key === 'Escape') { setCreatingProject(false); setNewProjectName('') }
               }}
-              className="flex-1 bg-transparent outline-none font-dm text-[16px] text-white placeholder:text-white/20"
+              className="flex-1 bg-transparent outline-none text-[17px] text-zinc-900 placeholder:text-zinc-400"
             />
           ) : (
             <input
               ref={inputRef}
               type="text"
-              placeholder="Type a command or search..."
+              placeholder="Type a command or search"
               value={query}
               onChange={e => { setQuery(e.target.value); setActiveIdx(0) }}
-              className="flex-1 bg-transparent outline-none font-dm text-[16px] text-white placeholder:text-white/20"
+              className="flex-1 bg-transparent outline-none text-[17px] text-zinc-900 placeholder:text-zinc-400"
             />
           )}
-          <span className="font-space text-[9px] text-white/20 shrink-0 border border-white/10 px-1.5 py-0.5 rounded-sm">ESC</span>
-          <button onClick={() => setOpen(false)} className="text-white/20 hover:text-white/60 transition-colors">
-            <X size={15} />
+          <button
+            onClick={() => setOpen(false)}
+            className="shrink-0 text-[11px] font-medium text-zinc-500 bg-[#f5f5f7] hover:bg-[#ebebef] px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+          >
+            Esc
           </button>
         </div>
 
         {/* ─── New project inline form ─── */}
         {creatingProject && (
-          <div className="px-4 py-3 border-b border-brand-border flex items-center gap-3">
-            <span className="font-space text-[10px] uppercase tracking-widest text-brand-blue">New Project</span>
+          <div className="px-5 py-3 border-b border-black/[0.07] flex items-center gap-3">
+            <span className="text-[13px] font-semibold text-zinc-900">New project</span>
             <div className="flex-1" />
             <button
               onClick={handleCreateProject}
-              className="flex items-center gap-1.5 bg-brand-blue text-black px-4 py-1.5 rounded-sm font-space text-[10px] uppercase tracking-widest font-bold hover:bg-white transition-colors"
+              className="px-4 py-1.5 rounded-full text-[13px] font-medium text-white shadow-[0_4px_12px_rgba(0,113,227,0.35)] hover:-translate-y-0.5 active:scale-95 transition-all cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, #3aa0ff, #0071e3)' }}
             >
-              Create <ArrowRight size={12} />
+              Create
             </button>
             <button
               onClick={() => { setCreatingProject(false); setNewProjectName('') }}
-              className="font-space text-[10px] uppercase tracking-widest text-brand-muted hover:text-white transition-colors"
+              className="text-[13px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -205,14 +200,14 @@ export default function CommandPalette() {
         )}
 
         {/* ─── Items ─── */}
-        <div className="max-h-[380px] overflow-y-auto py-2">
+        <div className="max-h-[380px] overflow-y-auto py-2 px-2">
           {(() => {
             let globalIdx = 0
             return groupedFiltered.map(({ group, items }) => {
               if (!items.length) return null
               return (
-                <div key={group}>
-                  <div className="px-4 py-2 font-space text-[9px] uppercase tracking-[0.2em] text-white/20">
+                <div key={group} className="mb-1">
+                  <div className="px-3 pt-2 pb-1 text-[12px] font-semibold text-zinc-400">
                     {group}
                   </div>
                   {items.map((item) => {
@@ -223,20 +218,12 @@ export default function CommandPalette() {
                         key={item.label + idx}
                         onClick={item.action}
                         onMouseEnter={() => setActiveIdx(idx)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left"
-                        style={{ background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent' }}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors duration-100 cursor-pointer ${isActive ? 'text-white' : 'text-zinc-800'}`}
+                        style={{ background: isActive ? 'linear-gradient(135deg, #3aa0ff, #0071e3)' : 'transparent' }}
                       >
-                        <item.icon
-                          size={15}
-                          className="shrink-0"
-                          style={{ color: isActive ? 'var(--color-brand-blue)' : 'rgba(255,255,255,0.3)' }}
-                        />
-                        <span className="flex-1 font-dm text-[13px]"
-                          style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.65)' }}>
-                          {item.label}
-                        </span>
+                        <span className="text-[14px] font-medium">{item.label}</span>
                         {item.shortcut && (
-                          <span className="font-space text-[9px] text-white/20 shrink-0">{item.shortcut}</span>
+                          <span className={`text-[11px] shrink-0 ${isActive ? 'text-white/75' : 'text-zinc-400'}`}>{item.shortcut}</span>
                         )}
                       </button>
                     )
@@ -246,17 +233,17 @@ export default function CommandPalette() {
             })
           })()}
           {filtered.length === 0 && (
-            <div className="py-10 text-center font-space text-[10px] uppercase tracking-widest text-white/20">
+            <div className="py-10 text-center text-[13px] text-zinc-400">
               No results for "{query}"
             </div>
           )}
         </div>
 
         {/* ─── Footer ─── */}
-        <div className="px-4 py-2.5 border-t border-brand-border flex items-center gap-4">
-          <span className="font-space text-[9px] text-white/20">↑↓ navigate</span>
-          <span className="font-space text-[9px] text-white/20">↵ select</span>
-          <span className="font-space text-[9px] text-white/20">esc close</span>
+        <div className="px-5 py-2.5 border-t border-black/[0.07] bg-[#f5f5f7]/70 flex items-center gap-4">
+          <span className="text-[11px] text-zinc-400">↑↓ navigate</span>
+          <span className="text-[11px] text-zinc-400">↵ select</span>
+          <span className="text-[11px] text-zinc-400">esc close</span>
         </div>
       </div>
     </div>

@@ -1,0 +1,44 @@
+{
+  "champion_version": "local-logistic-regression-v1",
+  "last_drift": {
+    "status": "waiting_for_data",
+    "provider": "local-psi",
+    "minimum_samples": 10,
+    "current_samples": 0,
+    "baseline_samples": 14,
+    "detail": "Drift evaluation starts after the minimum baseline and current sample sizes are available.",
+    "evaluated_at": "2026-10-18T19:53:39.808787+00:00"
+  },
+  "baseline": {
+    "confidence": [
+      0.75,
+      0.75,
+      0.75,
+      0.65,
+      0.75,
+      0.75,
+      0.75,
+      0.75,
+      0.75,
+      0.99,
+      0.99,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "embedding_signal": [],
+    "queues": {
+      "billing-specialists": 8,
+      "technical-specialists": 2,
+      "account-specialists": 1,
+      "general-specialists": 3
+    }
+  },
+  "challenger": {
+    "version": "challenger-20261018194044",
+    "weighted_f1": 0.5333333333333333,
+    "artifact": "D:\\3rd_year\\MLOPS\\multi-channel-ingestion-engine-brd-generation-\\nexus-backend\\nexus\\mlops_artifacts\\ticket_routing_challenger.joblib",
+    "mlflow_model_uri": "models:/m-17d4f45005b445e9ab2c6556c7077c2b",
+    "created_at": "2026-10-18T19:40:56.570155+00:00"
+  }
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext'
-import { getActions, approveAction, rejectAction, generateBrdForAction } from '../services/api'
+import { getActions, approveAction, rejectAction } from '../services/api'
 import { Activity, CheckCircle2, XCircle, Clock, Loader2, MailCheck, AlertTriangle, Shield, FileText } from 'lucide-react'
 
 // Helper to format time cleanly
@@ -45,7 +45,8 @@ function ActionRow({ action, globalIdx, onUpdate }) {
   const isEscalated = ESCALATED_STATUSES.includes(a.status)
   const isFlagged = a.status === 'pending_escalation'
   const canReview = ['pending', 'escalated', 'pending_escalation'].includes(a.status)
-  const canGenerateBrd = (a.intent === 'brd' || a.email?.force_intent === 'brd' || a.force_brd) && !a.brd_final
+  // BRD generation is intentionally disabled for the ticket-routing product.
+  const canGenerateBrd = false
   const sm = STATUS_META[a.status] || STATUS_META.pending
   const intTheme = INTENT_THEME[a.intent] || INTENT_THEME.general
   const confidence = a.agent_state?.confidence ?? a.confidence
@@ -77,7 +78,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
     } catch {}
   }
 
-  const handleGenerateBrd = async (e) => {
+  /* const handleGenerateBrd = async (e) => {
     e.stopPropagation()
     setApproving(true)
     try {
@@ -91,7 +92,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
     } finally {
       setApproving(false)
     }
-  }
+  } */
 
   return (
     <div
@@ -241,6 +242,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                 </div>
               )}
 
+              {/*
               {(a.brd_job_id || a.brd_final) && (
                 <div className="mt-4 p-3 rounded-lg border border-white/10 bg-white/5 font-sans text-sm flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
@@ -257,6 +259,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                   )}
                 </div>
               )}
+              */}
 
               {/* Action Buttons */}
               {(canReview || canGenerateBrd) && (
@@ -270,7 +273,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                       {approving ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><MailCheck size={16} /> Approve & Send</>}
                     </button>
                   )}
-                  {canGenerateBrd && (
+                  {/* {canGenerateBrd && (
                     <button
                       onClick={handleGenerateBrd}
                       disabled={approving}
@@ -278,7 +281,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                     >
                       <FileText size={16} className="text-purple-400" /> Generate BRD
                     </button>
-                  )}
+                  )} */}
                   {canReview && (
                     <button
                       onClick={handleReject}

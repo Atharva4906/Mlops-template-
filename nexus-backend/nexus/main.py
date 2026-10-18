@@ -10,7 +10,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, R
 from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.responses import FileResponse, HTMLResponse # pyright: ignore[reportMissingImports]
 
-from services.google_auth    import get_auth_url, exchange_code, save_credentials, load_credentials
+from services.google_auth    import get_auth_url, exchange_code, save_credentials, clear_credentials, load_credentials
 from services.gmail_service  import fetch_unread_emails, send_email, mark_read, fetch_thread_emails, get_owner_email, GmailRateLimitError
 from services.calendar_service import get_upcoming_events, delete_event
 from services.docx_generator import generate_docx
@@ -18,26 +18,14 @@ from services.clustering_service import ProjectClusteringAgent
 from services.parsers import MultiModalParsers
 from services.ingestion_enhancer import enhancer
 from services.multi_channel_fetcher import MultiChannelFetcher
+from services.ticket_api import router as ticket_router, route_ingested_source, set_broadcaster, tickets
+from services.mlops_service import scheduled_drift_loop
 from agents.graph            import run_agent
 import services.db_service as db_service
 from scripts.auto_ingest_pipeline import auto_ingest_loop, scan_once, ingest_status, ingest_reset
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# 1. Create the app instance FIRST
-app = FastAPI(title="NEXUS Backend")
-
-# 2. Then add middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],            # For development – restrict later
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 3. Then your routes, WebSocket, etc.
 
 # ── In-memory state ────────────────────────────────────────
 store = {
@@ -243,6 +231,9 @@ async def broadcast(data: dict):
         if ws in store["ws_clients"]:
             store["ws_clients"].remove(ws)
 
+
+set_broadcaster(broadcast)
+
 async def run_blocking(fn, *args, **kwargs):
     """
     Run sync IO in threadpool, but gracefully fall back when reload-mode
@@ -302,6 +293,13 @@ async def email_poll_loop():
                         
                     email["received_at"] = email.get("date")
                     db_service.upsert_emails([email]) # Persist immediately
+                    route_ingested_source({
+                        "id": email.get("id"),
+                        "thread_id": email.get("thread_id"),
+                        "channel": "email",
+                        "subject": email.get("subject", ""),
+                        "body": email.get("body", ""),
+                    })
                     valid_batch_to_process.append(email)
                 
                 # Intelligent Batching: If we found valid business emails, 
@@ -651,6 +649,8 @@ async def lifespan(app: FastAPI):
         print(f"[NEXUS] Warning: Could not preload Cluster Agent: {e}")
         
     asyncio.create_task(email_poll_loop())
+    if os.getenv("MLOPS_DRIFT_ENABLED", "true").lower() in ("1", "true", "yes", "on"):
+        asyncio.create_task(scheduled_drift_loop(lambda: tickets.values()))
     if os.getenv("AUTO_INGEST_ENABLED", "true").lower() in ("1","true","yes","on"):
         asyncio.create_task(auto_ingest_loop(broadcast))
     yield
@@ -659,6 +659,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="NEXUS", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app)
+except ImportError:
+    print("[MLOps] Prometheus instrumentator not installed; /metrics is unavailable.")
+app.include_router(ticket_router)
 
 @app.get("/", response_class=FileResponse)
 async def root():
@@ -670,8 +676,22 @@ async def root():
 # ══════════════════════════════════════════════════════════════
 @app.get("/auth/login")
 async def auth_login():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(get_auth_url())
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    try:
+        return RedirectResponse(get_auth_url())
+    except FileNotFoundError:
+        return HTMLResponse(
+            "<h2>Google login is not configured</h2>"
+            "<p>Place your Google OAuth client JSON at "
+            "<code>nexus-backend/nexus/credentials.json</code>, "
+            "or set <code>GOOGLE_CREDS_FILE</code> in <code>.env</code>.</p>",
+            status_code=503,
+        )
+    except Exception as error:
+        return HTMLResponse(
+            f"<h2>Google login could not start</h2><p>{error}</p>",
+            status_code=503,
+        )
 
 @app.get("/auth/callback")
 async def auth_callback(code: str, state: str | None = None):
@@ -711,6 +731,15 @@ async def auth_status():
             "email": store.get("owner_email", "")}
 
 
+@app.post("/auth/logout")
+async def auth_logout():
+    clear_credentials()
+    store["authenticated"] = False
+    store["owner_email"] = ""
+    await broadcast({"type": "auth", "status": "logged_out", "email": ""})
+    return {"authenticated": False, "logged_out": True}
+
+
 # ══════════════════════════════════════════════════════════════
 # EMAILS
 # ══════════════════════════════════════════════════════════════
@@ -722,6 +751,14 @@ async def list_emails(limit: int = MAX_EMAIL_FETCH):
     try:
         emails = await run_blocking(fetch_unread_emails, creds, limit)
         store["latest_emails"] = emails
+        for email in emails:
+            route_ingested_source({
+                "id": email.get("id"),
+                "thread_id": email.get("thread_id"),
+                "channel": "email",
+                "subject": email.get("subject", ""),
+                "body": email.get("body", ""),
+            })
         # Attach AI project suggestions for UI mapping
         enriched = []
         for em in emails:
@@ -1405,6 +1442,12 @@ async def ingest_multi_channel(request: Request):
         doc_type = "email" if item.get("source") == "Gmail" else "meeting" if item.get("source") == "Fireflies.ai" else "chat"
         subject = item.get("subject") or f"{item.get('source','External')} item"
         db_service.add_document(project_id, subject, cleaned or item.get("content", ""), doc_type)
+        route_ingested_source({
+            "id": item.get("id"),
+            "channel": "email" if doc_type == "email" else "chat",
+            "subject": subject,
+            "content": cleaned or item.get("content", ""),
+        })
         added += 1
     return {"project_id": project_id, "added": added, "skipped_noise": skipped, "fetched": len(items)}
 

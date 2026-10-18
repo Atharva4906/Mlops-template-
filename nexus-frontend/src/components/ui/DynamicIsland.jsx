@@ -263,7 +263,7 @@ export default function DynamicIsland() {
               <div className="flex items-center justify-between mb-3 border-b border-[#00f0ff]/20 pb-2 shrink-0">
                 <div className="flex items-center gap-2 text-[#00f0ff]">
                   <Cpu size={12} />
-                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold">NEXUS_ORCHESTRATOR</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold">TICKET_ROUTING_AGENT</span>
                 </div>
                 <div className="font-mono text-[9px] text-[#00f0ff] font-bold">
                   {Math.round(progress)}%

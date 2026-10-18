@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react'
-import { Sparkles, Send, List, BookOpen, Terminal, User, Cpu, Loader2, Activity, Clock } from 'lucide-react'
 import {
   getProjects,
   getProjectContext,
@@ -9,22 +8,19 @@ import {
   getStats,
   getSummary,
   getActionsBySections,
-  listBrds,
   getCalendarEvents
 } from '../services/api'
 
 // --- BUBBLE COMPONENTS ---
 function BotBubble({ text }) {
   return (
-    <div className="flex gap-3 max-w-[85%] mb-6 group">
-      <div className="w-8 h-8 rounded-sm bg-brand-blue/10 border border-brand-blue/30 flex items-center justify-center shrink-0">
-        <Cpu size={16} className="text-brand-blue" />
+    <div className="nx-pop max-w-[80%] mb-5">
+      <div className="flex items-center gap-2 mb-1.5 px-1">
+        <span className="text-[12px] font-semibold text-zinc-900">LangGraph Router</span>
+        <span className="text-[11px] text-zinc-400">groq://llama-3.3-70b</span>
       </div>
-      <div className="space-y-1">
-        <div className="font-space text-[9px] uppercase tracking-widest text-brand-muted">AI Agent</div>
-        <div className="rounded-sm bg-[#0a0a0a] border border-brand-border p-4 text-[13px] text-brand-text leading-relaxed whitespace-pre-wrap shadow-sm group-hover:border-brand-blue/30 transition-colors">
-          {text}
-        </div>
+      <div className="rounded-[22px] rounded-tl-md bg-white/90 backdrop-blur px-4 py-3 text-[14px] text-zinc-900 leading-relaxed whitespace-pre-wrap ring-1 ring-black/[0.06] shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+        {text}
       </div>
     </div>
   )
@@ -32,19 +28,33 @@ function BotBubble({ text }) {
 
 function UserBubble({ text }) {
   return (
-    <div className="flex gap-3 max-w-[85%] mb-6 ml-auto flex-row-reverse group">
-      <div className="w-8 h-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-        <User size={16} className="text-white" />
+    <div className="nx-pop max-w-[75%] mb-5 ml-auto">
+      <div className="mb-1.5 px-1 text-right text-[12px] font-semibold text-zinc-500">
+        MLOps Operator
       </div>
-      <div className="space-y-1 text-right">
-        <div className="font-space text-[9px] uppercase tracking-widest text-brand-muted">Operator</div>
-        <div className="rounded-sm bg-brand-blue text-black p-4 text-[13px] leading-relaxed font-dm shadow-lg">
-          {text}
-        </div>
+      <div className="rounded-[22px] rounded-tr-md text-white px-4 py-3 text-[14px] leading-relaxed text-left shadow-[0_6px_20px_rgba(0,113,227,0.35)]"
+        style={{ background: 'linear-gradient(135deg, #3aa0ff 0%, #0071e3 60%, #0a5fd0 100%)' }}>
+        {text}
       </div>
     </div>
   )
 }
+
+const FX_CSS = `
+@keyframes nx-pop { from { opacity: 0; transform: translateY(10px) scale(.97) } to { opacity: 1; transform: none } }
+@keyframes nx-rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes nx-drift-a { 0%,100% { transform: translate(0,0) scale(1) } 50% { transform: translate(60px,40px) scale(1.12) } }
+@keyframes nx-drift-b { 0%,100% { transform: translate(0,0) scale(1) } 50% { transform: translate(-50px,-30px) scale(1.1) } }
+@keyframes nx-sheen { 0% { transform: translateX(-120%) } 60%,100% { transform: translateX(220%) } }
+.nx-pop { animation: nx-pop .38s cubic-bezier(.2,.8,.2,1) both }
+.nx-rise { animation: nx-rise .6s cubic-bezier(.2,.8,.2,1) both }
+.nx-blob-a { animation: nx-drift-a 18s ease-in-out infinite }
+.nx-blob-b { animation: nx-drift-b 22s ease-in-out infinite }
+.nx-send { position: relative; overflow: hidden }
+.nx-send::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent); transform: translateX(-120%); }
+.nx-send:hover:not(:disabled)::after { animation: nx-sheen .9s ease }
+@media (prefers-reduced-motion: reduce) { .nx-pop, .nx-rise, .nx-blob-a, .nx-blob-b { animation: none !important } .nx-send:hover::after { animation: none !important } }
+`
 
 // --- SYSTEM PROMPT ---
 const SYSTEM_PROMPT = `You are the Nexus AI Operations Router. Map the user's request to one of these intents:
@@ -54,7 +64,6 @@ const SYSTEM_PROMPT = `You are the Nexus AI Operations Router. Map the user's re
 - "get_stats": Show system metrics, throughput, or stats.
 - "get_summary": Show the daily AI digest or summary.
 - "list_pending_actions": Show pending tasks, escalations, or queued items.
-- "list_brds": Show generated documents or BRDs.
 - "get_calendar": Show upcoming meetings or schedule.
 - "unknown": Request does not match any of the above.
 
@@ -151,7 +160,7 @@ export default function Assistant() {
         case 'get_stats': {
           setBusy(true)
           const st = await getStats()
-          push('bot', `System Telemetry:\n\n• Processed Items: ${st.total_processed || 0}\n• Escalations: ${st.escalations || 0}\n• Scheduled Meetings: ${st.total_meetings || 0}\n• BRDs Generated: ${st.brds_generated || 0}`)
+          push('bot', `System Telemetry:\n\nProcessed Items: ${st.total_processed || 0}\nEscalations: ${st.escalations || 0}\nScheduled Meetings: ${st.total_meetings || 0}`)
           break
         }
 
@@ -171,15 +180,6 @@ export default function Assistant() {
           
           if (!queues.length) return push('bot', 'All clear. No pending actions in the queue.')
           push('bot', `Operational Queue Snapshot:\n\n${queues.join('\n')}`)
-          break
-        }
-
-        case 'list_brds': {
-          setBusy(true)
-          const res = await listBrds()
-          const brds = res.brds || []
-          if (!brds.length) return push('bot', 'No Documents generated yet.')
-          push('bot', `Document Archive:\n\n${brds.slice(0, 5).map(b => `• ${b.title || 'Untitled'} (ID: ${b.job_id?.slice(0,6)})`).join('\n')}${brds.length > 5 ? '\n...and more.' : ''}`)
           break
         }
 
@@ -244,123 +244,184 @@ export default function Assistant() {
     }
   }
 
+  const card = 'border border-white/70 ring-1 ring-black/[0.05] bg-white/70 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.07)]'
+  const tile = 'w-full text-left p-3.5 rounded-2xl bg-white/80 ring-1 ring-black/[0.05] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] active:scale-[0.98] active:translate-y-0 cursor-pointer disabled:opacity-50 disabled:pointer-events-none'
+
   return (
-    <div className="pb-20">
-      {/* Header */}
-      <div className="mb-8 mt-6">
-        <div className="htag mb-4 font-space text-[11px] uppercase tracking-widest text-brand-muted flex items-center gap-2">
-          <Terminal size={12} className="text-brand-blue" />
-          Command Center / Agent v2.0
-        </div>
-        <h1 className="font-bebas text-[clamp(40px,7vw,86px)] leading-[0.9] uppercase text-brand-text flex items-center gap-4">
-          <Sparkles className="text-brand-blue" size={48} />
-          AI Ops Chat
-        </h1>
+    <div
+      className="relative w-full max-w-none mx-0 h-[calc(100vh-2rem)] flex flex-col text-zinc-900 overflow-hidden px-6 pt-5 pb-5"
+      style={{
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif',
+        background: 'linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%)',
+      }}
+    >
+      <style>{FX_CSS}</style>
+
+      {/* Ambient background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="nx-blob-a absolute -top-24 -left-20 w-[420px] h-[420px] rounded-full bg-sky-300/30 blur-3xl" />
+        <div className="nx-blob-b absolute top-1/3 -right-24 w-[460px] h-[460px] rounded-full bg-violet-300/25 blur-3xl" />
+        <div className="nx-blob-a absolute -bottom-32 left-1/3 w-[380px] h-[380px] rounded-full bg-rose-200/25 blur-3xl" />
       </div>
 
-      <div className="grid lg:grid-cols-[1fr,320px] gap-6 items-start">
-        {/* Main Chat Interface */}
-        <div className="border border-brand-border rounded-sm overflow-hidden bg-[#050505] flex flex-col shadow-2xl">
-          <div className="bg-[#0a0a0a] border-b border-brand-border px-4 py-3 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-yellow/60 shadow-[0_0_8px_rgba(255,226,52,0.4)]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-blue/60 shadow-[0_0_8px_rgba(0,181,226,0.4)]" />
-            <span className="ml-3 font-space text-[9px] uppercase tracking-[0.2em] text-brand-muted/70 font-bold">active_session:operator_01</span>
+      {/* Header */}
+      <div className="nx-rise relative pb-5 mb-5 border-b border-black/[0.07] flex flex-wrap items-center justify-between gap-4 shrink-0">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1
+              className="text-[28px] font-semibold tracking-tight bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #3a3a44 100%)' }}
+            >
+              AI Ops & Triage Console
+            </h1>
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/80 ring-1 ring-black/[0.06] text-zinc-500 text-[11px] font-medium shadow-sm">
+              Router v2.0
+            </span>
+          </div>
+          <p className="text-[13px] text-zinc-500 mt-0.5">
+            LangGraph intent orchestration, system telemetry & workspace queue inspection
+          </p>
+        </div>
+
+        {/* Status pills */}
+        <div className="flex items-center gap-2.5">
+          <div className="px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur ring-1 ring-black/[0.06] shadow-sm text-[12px] text-zinc-500">
+            Engine <span className="font-semibold text-zinc-900 ml-1">Groq LPU</span>
+          </div>
+          <div className="px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur ring-1 ring-black/[0.06] shadow-sm text-[12px] text-zinc-500">
+            Workspaces <span className="font-semibold text-zinc-900 ml-1">{projects.length}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2-column workspace */}
+      <div className="relative flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-12 gap-6">
+
+        {/* Chat */}
+        <div className={`nx-rise xl:col-span-8 h-full min-h-0 rounded-3xl overflow-hidden flex flex-col ${card}`} style={{ animationDelay: '80ms' }}>
+
+          {/* Title bar */}
+          <div className="bg-white/60 backdrop-blur border-b border-black/[0.06] px-5 py-3.5 flex items-center justify-between shrink-0">
+            <span className="text-[13px] font-medium text-zinc-700 truncate">
+              session://operator_01@langgraph-router
+            </span>
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200/70 px-2.5 py-1 rounded-full shrink-0">
+              PII Guard Active
+            </span>
           </div>
 
-          {/* Message Area */}
-          <div 
+          {/* Messages */}
+          <div
             ref={scrollRef}
-            className="h-[600px] overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-brand-border scroll-smooth"
+            className="flex-1 min-h-0 overflow-y-auto p-6 space-y-1 scroll-smooth"
           >
             {messages.map((m, i) => (
               <div key={i}>
                 {m.role === 'user' ? <UserBubble text={m.text} /> : <BotBubble text={m.text} />}
               </div>
             ))}
-            
-            {/* Animated Thinking Indicator */}
+
+            {/* Thinking indicator */}
             {busy && (
-              <div className="flex gap-3 max-w-[85%] mb-4 animate-pulse">
-                <div className="w-8 h-8 rounded-sm bg-brand-blue/10 border border-brand-blue/30 flex items-center justify-center shrink-0">
-                  <Loader2 size={16} className="text-brand-blue animate-spin" />
+              <div className="nx-pop max-w-[80%] mb-4">
+                <div className="mb-1.5 px-1 text-[12px] font-semibold text-zinc-500">
+                  Executing intent graph…
                 </div>
-                <div className="space-y-1">
-                  <div className="font-space text-[9px] uppercase tracking-widest text-brand-muted">Thinking</div>
-                  <div className="bg-[#0a0a0a] border border-brand-border p-3 rounded-sm h-12 w-24 flex items-center gap-1.5 px-4">
-                    <div className="w-1.5 h-1.5 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
+                <div className="bg-white/90 ring-1 ring-black/[0.06] shadow-[0_4px_16px_rgba(0,0,0,0.06)] px-4 py-3.5 rounded-[22px] rounded-tl-md inline-flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Input Area */}
-          <form 
-            onSubmit={(e) => { e.preventDefault(); handleCommand(input); }} 
-            className="p-4 bg-[#0a0a0a] border-t border-brand-border flex items-center gap-3"
+          {/* Input */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleCommand(input); }}
+            className="p-4 bg-white/60 backdrop-blur border-t border-black/[0.06] flex items-center gap-3 shrink-0"
           >
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Query system (e.g. 'Show telemetry' or 'What's in the queue?')"
-              className="flex-1 bg-brand-input border border-brand-border text-brand-text px-4 py-3.5 rounded-sm font-dm text-[14px] outline-none focus:border-brand-blue transition-all"
+              placeholder="Query MLOps router (e.g., 'Show telemetry', 'What's in the queue?', or 'List projects')"
+              className="flex-1 bg-white text-zinc-900 placeholder:text-zinc-400 px-5 py-3 rounded-full text-[14px] outline-none ring-1 ring-black/[0.08] shadow-sm focus:ring-2 focus:ring-[#0071e3] focus:shadow-[0_0_0_6px_rgba(0,113,227,0.12)] transition-all duration-200"
               disabled={busy}
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={busy || !input.trim()}
-              className="w-12 h-12 bg-brand-blue text-black rounded-sm flex items-center justify-center hover:bg-white transition-colors disabled:opacity-40 shadow-lg shadow-brand-blue/10"
+              className="nx-send h-[44px] px-6 text-white rounded-full font-medium text-[14px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,113,227,0.45)] active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer shrink-0 shadow-[0_4px_14px_rgba(0,113,227,0.35)]"
+              style={{ background: 'linear-gradient(135deg, #3aa0ff 0%, #0071e3 100%)' }}
             >
-              <Send size={18} />
+              Send
             </button>
           </form>
         </div>
 
-        {/* Sidebar Actions */}
-        <div className="space-y-4">
-          <div className="border border-brand-border rounded-sm p-6 bg-[#050505] shadow-xl">
-            <div className="font-space text-[10px] uppercase tracking-[0.2em] text-brand-blue mb-5 font-bold">Quick Directives</div>
-            <div className="space-y-3">
-              <button 
-                onClick={() => handleCommand('Check system telemetry and stats')} 
-                className="w-full flex items-center justify-between px-4 py-3 rounded-sm border border-brand-border text-brand-muted hover:text-white hover:border-brand-blue/50 hover:bg-brand-blue/5 transition-all font-space text-[10px] uppercase tracking-widest group bg-[#0a0a0a]"
+        {/* Right column */}
+        <div className="xl:col-span-4 h-full min-h-0 overflow-y-auto space-y-5 pr-0.5">
+
+          {/* Quick directives */}
+          <div className={`nx-rise rounded-3xl p-5 ${card}`} style={{ animationDelay: '160ms' }}>
+            <div className="flex items-baseline justify-between mb-4">
+              <span className="text-[15px] font-semibold text-zinc-900">Quick directives</span>
+              <span className="text-[12px] text-zinc-400">One click</span>
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={() => handleCommand('Check system telemetry and stats')}
+                disabled={busy}
+                className={`${tile} hover:bg-sky-50`}
               >
-                <div className="flex items-center gap-3">
-                  <Activity size={14} className="text-brand-blue" /> System Telemetry
-                </div>
-              </button>
-              
-              <button 
-                onClick={() => handleCommand('What actions are pending in the queue?')} 
-                className="w-full flex items-center justify-between px-4 py-3 rounded-sm border border-brand-border text-brand-muted hover:text-white hover:border-brand-yellow/50 hover:bg-brand-yellow/5 transition-all font-space text-[10px] uppercase tracking-widest group bg-[#0a0a0a]"
-              >
-                <div className="flex items-center gap-3 text-left">
-                  <Clock size={14} className="text-brand-yellow" /> Operational Queue
-                </div>
+                <div className="text-[14px] font-semibold text-zinc-900">System Telemetry</div>
+                <div className="text-[12px] text-zinc-500 mt-0.5">Processed volume & escalations</div>
               </button>
 
-              <button 
-                onClick={() => handleCommand('list projects')} 
-                className="w-full flex items-center justify-between px-4 py-3 rounded-sm border border-brand-border text-brand-muted hover:text-white hover:border-brand-blue/50 hover:bg-brand-blue/5 transition-all font-space text-[10px] uppercase tracking-widest group bg-[#0a0a0a]"
+              <button
+                onClick={() => handleCommand('What actions are pending in the queue?')}
+                disabled={busy}
+                className={`${tile} hover:bg-amber-50`}
               >
-                <div className="flex items-center gap-3">
-                  <List size={14} className="text-brand-blue" /> List Workspaces
-                </div>
+                <div className="text-[14px] font-semibold text-zinc-900">Operational Queue</div>
+                <div className="text-[12px] text-zinc-500 mt-0.5">Pending HITL triage actions</div>
+              </button>
+
+              <button
+                onClick={() => handleCommand('list projects')}
+                disabled={busy}
+                className={`${tile} hover:bg-violet-50`}
+              >
+                <div className="text-[14px] font-semibold text-zinc-900">List Workspaces</div>
+                <div className="text-[12px] text-zinc-500 mt-0.5">Inspect active routing queues</div>
               </button>
             </div>
           </div>
 
-          <div className="border border-brand-border rounded-sm p-6 bg-[#050505] shadow-xl">
-            <div className="font-space text-[10px] uppercase tracking-[0.2em] text-brand-muted mb-4 font-bold">Syntax Examples</div>
-            <div className="space-y-3 font-dm text-[12px] text-brand-muted/80 italic leading-relaxed">
-              <div className="p-3 bg-white/5 border-l-2 border-brand-blue rounded-r-sm hover:text-white transition-colors cursor-default">"Show me the daily AI digest."</div>
-              <div className="p-3 bg-white/5 border-l-2 border-brand-yellow rounded-r-sm hover:text-white transition-colors cursor-default">"What's on my calendar?"</div>
-              <div className="p-3 bg-white/5 border-l-2 border-red-500/50 rounded-r-sm hover:text-white transition-colors cursor-default">"Delete the obsolete project."</div>
+          {/* Syntax examples */}
+          <div className={`nx-rise rounded-3xl p-5 ${card}`} style={{ animationDelay: '240ms' }}>
+            <div className="flex items-baseline justify-between mb-4">
+              <span className="text-[15px] font-semibold text-zinc-900">Try asking</span>
+              <span className="text-[12px] text-zinc-400">Click to run</span>
+            </div>
+            <div className="space-y-2 text-[13px]">
+              {[
+                ['Show me the daily AI digest.', 'Show me the daily AI digest.'],
+                ["What's on my calendar?", "What's on my calendar?"],
+                ['Delete the obsolete project.', 'Delete the obsolete project.'],
+              ].map(([label, cmd]) => (
+                <div
+                  key={cmd}
+                  onClick={() => handleCommand(cmd)}
+                  className="px-4 py-3 bg-white/80 ring-1 ring-black/[0.05] rounded-2xl text-zinc-600 hover:text-zinc-900 transition-all duration-200 hover:translate-x-1 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)] active:scale-[0.98] cursor-pointer"
+                >
+                  "{label}"
+                </div>
+              ))}
             </div>
           </div>
+
         </div>
       </div>
     </div>

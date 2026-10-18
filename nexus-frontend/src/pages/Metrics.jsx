@@ -148,7 +148,7 @@ export default function Metrics() {
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#00f0ff] flex items-center gap-3 font-bold">
                <span className="animate-[blink_1s_infinite]">[SYS.ONLINE]</span>
                <span className="w-8 h-[1px] bg-[#00f0ff]/50" />
-               NEXUS ORCHESTRATION KERNEL
+               TICKET ROUTING AGENT ORCHESTRATION KERNEL
             </div>
             <div className="font-mono text-[10px] text-zinc-500 hidden sm:flex items-center gap-6 font-bold tracking-widest">
               <span className="flex items-center gap-2"><Server size={12} className="text-[#0055ff]" /> CORE_ACTIVE</span>

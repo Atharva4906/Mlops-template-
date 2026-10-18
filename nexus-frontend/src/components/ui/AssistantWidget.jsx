@@ -8,7 +8,6 @@ import {
   getStats,
   getSummary,
   getActionsBySections,
-  listBrds,
   getCalendarEvents
 } from '../../services/api'
 
@@ -19,7 +18,6 @@ const SYSTEM_PROMPT = `You are the KALA DHUA'S AI Operations Router. Your job is
 - "get_stats": User wants to see system metrics, throughput, or stats.
 - "get_summary": User wants the daily AI digest or summary.
 - "list_pending_actions": User wants to see pending tasks, escalations, or queued items.
-- "list_brds": User wants to see generated documents or BRDs.
 - "get_calendar": User wants to see upcoming meetings or schedule.
 - "unknown": Request does not match any of the above.
 
@@ -92,7 +90,7 @@ export default function AssistantWidget() {
 
         case 'get_stats': {
           const st = await getStats()
-          push('bot', `System Telemetry:\n• Processed Items: ${st.total_processed || 0}\n• Escalations: ${st.escalations || 0}\n• Scheduled Meetings: ${st.total_meetings || 0}\n• BRDs Generated: ${st.brds_generated || 0}`)
+          push('bot', `System Telemetry:\n• Processed Items: ${st.total_processed || 0}\n• Escalations: ${st.escalations || 0}\n• Scheduled Meetings: ${st.total_meetings || 0}`)
           break
         }
 
@@ -110,14 +108,6 @@ export default function AssistantWidget() {
           
           if (!queues.length) return push('bot', 'All clear. There are no pending actions in the queue.')
           push('bot', `Operational Queue Snapshot:\n\n${queues.join('\n')}`)
-          break
-        }
-
-        case 'list_brds': {
-          const res = await listBrds()
-          const brds = res.brds || []
-          if (!brds.length) return push('bot', 'No Business Requirement Documents have been generated yet.')
-          push('bot', `Document Archive:\n\n${brds.slice(0, 5).map(b => `• ${b.title || 'Untitled'} (ID: ${b.job_id?.slice(0,6)})`).join('\n')}${brds.length > 5 ? '\n...and more.' : ''}`)
           break
         }
 

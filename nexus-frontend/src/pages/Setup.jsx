@@ -3,7 +3,7 @@ export default function Setup() {
     <div>
       <div className="ph">
         <div className="pt">Setup & Authentication</div>
-        <div className="ps-h">Everything you need to get NEXUS running with real Google APIs</div>
+        <div className="ps-h">Everything you need to get Ticket Routing Agent running with real Google APIs</div>
       </div>
       <div className="g2">
         <div className="card">
@@ -14,7 +14,7 @@ export default function Setup() {
             { state: 'idle', text: <>Copy <code>.env.example</code> → <code>.env</code> · add <code>GROQ_API_KEY</code> (free at console.groq.com)</> },
             { state: 'idle', text: <><code>uvicorn main:app --reload --port 8000</code></> },
             { state: 'idle', text: <>Click "Connect Google" → one-time OAuth consent → <code>token.json</code> saved</> },
-            { state: 'idle', text: <>NEXUS is live — polls Gmail every 30s, LangGraph handles everything</> },
+            { state: 'idle', text: <>Ticket Routing Agent is live — polls Gmail every 30s, LangGraph handles everything</> },
           ].map((step, i) => (
             <div key={i} className="prog-step">
               <div className={`ps-d ${step.state}`} />

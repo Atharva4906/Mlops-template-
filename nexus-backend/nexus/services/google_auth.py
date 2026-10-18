@@ -3,6 +3,7 @@ Google OAuth2 — Real token flow. No passwords, no hardcoding.
 Scopes: Gmail (read/send) + Calendar (read/write)
 """
 import os, json
+from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
@@ -13,8 +14,16 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/calendar",
 ]
-CREDS_FILE   = os.getenv("GOOGLE_CREDS_FILE", "credentials.json")
-TOKEN_FILE   = os.getenv("TOKEN_FILE", "token.json")
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+
+def _resolve_file_path(value: str) -> str:
+    path = Path(value).expanduser()
+    return str(path if path.is_absolute() else BASE_DIR / path)
+
+
+CREDS_FILE   = _resolve_file_path(os.getenv("GOOGLE_CREDS_FILE", "credentials.json"))
+TOKEN_FILE   = _resolve_file_path(os.getenv("TOKEN_FILE", "token.json"))
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
 _oauth_state = None
 _pkce_by_state: dict[str, str] = {}
@@ -86,6 +95,11 @@ def exchange_code(code: str, state: str | None = None) -> Credentials:
 def save_credentials(creds: Credentials):
     with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         f.write(creds.to_json())
+
+
+def clear_credentials() -> None:
+    if os.path.exists(TOKEN_FILE):
+        os.remove(TOKEN_FILE)
 
 
 def load_credentials() -> Credentials | None:

@@ -23,7 +23,7 @@ export default function Topbar({ onRefresh }) {
   const path = Object.keys(PAGE_TITLES).find(k =>
     k === '/' ? location.pathname === '/' : location.pathname.startsWith(k)
   ) || '/'
-  const title = PAGE_TITLES[path] || 'NEXUS'
+  const title = PAGE_TITLES[path] || 'Ticket Routing Agent'
 
   useEffect(() => {
     getAuthStatus().then(d => {

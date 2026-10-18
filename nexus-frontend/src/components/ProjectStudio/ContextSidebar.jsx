@@ -32,7 +32,7 @@ export default function MainSidebar() {
       <div className="p-6 mb-4">
         <div className="flex items-center gap-3 mb-2">
           <Terminal size={20} className="text-brand-blue" />
-          <span className="font-bebas text-2xl tracking-wider text-white">NEXUS AI</span>
+          <span className="font-bebas text-2xl tracking-wider text-white">Ticket Routing Agent</span>
         </div>
         <div className="font-space text-[9px] uppercase tracking-[0.3em] text-brand-muted">
           Ops Management System

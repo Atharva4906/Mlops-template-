@@ -1,0 +1,12 @@
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.sqlite3
+*.db
+mlops_artifacts/
+brd_results/
+data_bandit_state.json
+token.json
+credentials.json

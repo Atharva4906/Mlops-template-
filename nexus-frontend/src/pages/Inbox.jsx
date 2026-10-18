@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext'
-import { getEmails, processEmail, clusterManual, getProjects, attachEmailToProject } from '../services/api'
-import { Inbox as InboxIcon, RefreshCw, Loader2, Check, CheckSquare, Cpu, Link as LinkIcon } from 'lucide-react'
+import { createTicket, getEmails, processEmail } from '../services/api'
 
 // Formatting helpers
 const FT = iso => {
@@ -41,7 +40,7 @@ const formatPlainText = (text) => {
           href={part} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-[#8ab4f8] hover:underline break-all"
+          className="text-[#0071e3] hover:underline break-all"
           onClick={e => e.stopPropagation()}
         >
           {part}
@@ -52,29 +51,47 @@ const formatPlainText = (text) => {
   })
 }
 
-function EmailRow({ email, isSelected, onSelect, onClick, isOpen, projects, onAssign, onProcess }) {
-  const [selProject, setSelProject] = useState(email.project_suggestion?.project_id || '')
-  const [assigning, setAssigning] = useState(false)
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif'
+
+const FX_CSS = `
+@keyframes ib-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes ib-open { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+.ib-rise { animation: ib-rise .55s cubic-bezier(.2,.8,.2,1) both }
+.ib-open { animation: ib-open .3s cubic-bezier(.2,.8,.2,1) both }
+@media (prefers-reduced-motion: reduce) { .ib-rise, .ib-open { animation: none !important } }
+`
+
+// Checkbox drawn with CSS (no icon library)
+function Box({ checked, partial }) {
+  const on = checked || partial
+  return (
+    <div className={`w-[18px] h-[18px] rounded-[6px] flex items-center justify-center transition-all duration-150 ${on ? 'bg-[#0071e3] ring-1 ring-[#0071e3]' : 'bg-white ring-1 ring-zinc-300'}`}>
+      {checked && <span className="block w-[5px] h-[9px] border-white border-r-2 border-b-2 rotate-45 -mt-[2px]" />}
+      {partial && !checked && <span className="block w-[10px] h-[2px] bg-white rounded" />}
+    </div>
+  )
+}
+
+function EmailRow({ email, isSelected, onSelect, onClick, isOpen, onProcess, onRoute }) {
+  const [routing, setRouting] = useState(false)
   const iframeRef = useRef(null)
 
   const senderName = (email.sender || '').split('@')[0] || 'Unknown'
   const ini = initials(email.sender)
 
-  const handleAssign = async (e) => {
+  const handleRoute = async (e) => {
     e.stopPropagation()
-    if (!selProject) return
-    setAssigning(true)
-    await onAssign(email.id, selProject)
-    setAssigning(false)
+    setRouting(true)
+    await onRoute(email)
+    setRouting(false)
   }
 
   // Smarter HTML Detection
   const bodyContent = email.body || email.snippet || '(empty)'
   const isHtml = /<html|<body|<div|<table|<p>/i.test(bodyContent)
 
-  // Gmail styling logic
-  const rowBg = isSelected ? 'bg-[#c2e7ff]/[0.12]' : isOpen ? 'bg-[#303134]' : 'bg-[#202124]'
-  const textWeight = isOpen ? 'font-normal text-[#bdc1c6]' : 'font-bold text-[#e8eaed]'
+  const rowBg = isSelected ? 'bg-[#c2e7ff]/40' : isOpen ? 'bg-[#f2f6fc]' : 'bg-white'
+  const textWeight = isOpen ? 'font-normal text-zinc-500' : 'font-semibold text-zinc-900'
 
   // Securely inject a script to force the iframe to report its true height
   const getSecureHtml = (html) => {
@@ -115,20 +132,18 @@ function EmailRow({ email, isSelected, onSelect, onClick, isOpen, projects, onAs
   }, [email.id])
 
   return (
-    <div className="flex flex-col relative group border-b border-[#4d5156] last:border-b-0">
-      {/* GMAIL LIST ROW */}
+    <div className="flex flex-col relative border-b border-black/[0.06] last:border-b-0">
+      {/* LIST ROW */}
       <div
-        className={`flex items-center h-[40px] cursor-pointer ${rowBg} hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] hover:bg-[#303134] hover:z-10 hover:border-transparent transition-none px-4`}
+        className={`group/row relative flex items-center h-[44px] cursor-pointer ${rowBg} hover:z-10 hover:shadow-[inset_1px_0_0_#dadce0,inset_-1px_0_0_#dadce0,0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] transition-shadow duration-150 px-4`}
         onClick={onClick}
       >
         <div className="flex items-center gap-2 w-[48px] shrink-0" onClick={e => e.stopPropagation()}>
           <div 
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/[0.05] cursor-pointer transition-colors"
             onClick={() => onSelect(email.id)}
           >
-            <div className={`w-[18px] h-[18px] border-2 rounded-[2px] flex items-center justify-center ${isSelected ? 'border-[#8ab4f8] bg-[#8ab4f8]' : 'border-[#9aa0a6]'}`}>
-              {isSelected && <Check size={14} className="text-[#202124] stroke-[3]" />}
-            </div>
+            <Box checked={isSelected} />
           </div>
         </div>
 
@@ -142,55 +157,65 @@ function EmailRow({ email, isSelected, onSelect, onClick, isOpen, projects, onAs
           <span className={`truncate ${textWeight}`}>
             {email.subject || '(no subject)'}
           </span>
-          <span className="text-[#9aa0a6] mx-1">-</span>
-          <span className="text-[#9aa0a6] truncate">
+          <span className="text-zinc-300 mx-1.5">-</span>
+          <span className="text-zinc-400 truncate">
             {email.snippet || ''}
           </span>
         </div>
 
-        <div className="w-[72px] shrink-0 text-right">
-          <span className={`text-[12px] ${textWeight}`}>
+        <div className="relative w-[96px] shrink-0 text-right h-full flex items-center justify-end">
+          <span className={`text-[12px] transition-opacity duration-100 group-hover/row:opacity-0 ${isOpen ? 'text-zinc-400' : 'text-zinc-700 font-semibold'}`}>
             {shortDate(email.received_at || email.date)}
           </span>
+          <button
+            onClick={handleRoute}
+            disabled={routing || email.ticket_id}
+            className="absolute right-0 opacity-0 group-hover/row:opacity-100 px-3 py-1 rounded-full bg-white ring-1 ring-black/[0.1] text-[12px] font-medium text-[#0b57d0] hover:bg-[#e8f0fe] transition-all disabled:text-zinc-400 disabled:hover:bg-white"
+          >
+            {routing ? 'Routing…' : (email.ticket_id ? 'Routed' : 'Route')}
+          </button>
         </div>
       </div>
 
-      {/* GMAIL READING PANE (EXPANDED) */}
+      {/* READING PANE (EXPANDED) */}
       {isOpen && (
-        <div className="bg-[#202124] text-[#e8eaed] border-t border-[#4d5156] p-6 pb-10 shadow-inner">
+        <div className="ib-open bg-[#f5f5f7] text-zinc-900 border-t border-black/[0.06] p-6 pb-10">
           <div className="max-w-4xl mx-auto lg:ml-[72px]">
             
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[22px] font-normal text-[#e8eaed] leading-7">
+              <h2 className="text-[24px] font-semibold tracking-tight text-zinc-900 leading-8">
                 {email.subject || '(no subject)'}
-                <span className="bg-[#3c4043] text-[#e8eaed] text-[10px] px-1.5 py-0.5 rounded ml-3 align-middle font-medium">Inbox x</span>
+                <span className="bg-white ring-1 ring-black/[0.06] text-zinc-500 text-[11px] px-2.5 py-0.5 rounded-full ml-3 align-middle font-medium">Inbox</span>
               </h2>
             </div>
 
             <div className="flex items-start justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#8ab4f8] flex items-center justify-center text-[#202124] text-lg font-medium shrink-0">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[14px] font-semibold shrink-0 shadow-[0_4px_12px_rgba(0,113,227,0.3)]"
+                  style={{ background: 'linear-gradient(135deg, #3aa0ff, #0071e3)' }}
+                >
                   {ini}
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[14px] text-[#e8eaed]">{senderName}</span>
-                    <span className="text-[12px] text-[#9aa0a6]">&lt;{email.sender}&gt;</span>
+                    <span className="font-semibold text-[14px] text-zinc-900">{senderName}</span>
+                    <span className="text-[12px] text-zinc-500">&lt;{email.sender}&gt;</span>
                   </div>
-                  <span className="text-[12px] text-[#9aa0a6] flex items-center gap-1 mt-0.5">
+                  <span className="text-[12px] text-zinc-400 mt-0.5">
                     to me
                   </span>
                 </div>
               </div>
-              <div className="text-[#9aa0a6] text-[12px]">
+              <div className="text-zinc-500 text-[12px]">
                 {FT(email.received_at || email.date)}
               </div>
             </div>
 
             {/* SAFE EMAIL BODY RENDERER */}
-            <div className="mb-12 font-sans overflow-hidden">
+            <div className="mb-10 overflow-hidden">
               {isHtml ? (
-                <div className="bg-white rounded-[8px] overflow-hidden border border-[#4d5156] shadow-sm">
+                <div className="bg-white rounded-2xl overflow-hidden ring-1 ring-black/[0.06] shadow-[0_6px_24px_rgba(0,0,0,0.06)]">
                   <iframe
                     ref={iframeRef}
                     srcDoc={getSecureHtml(bodyContent)}
@@ -201,9 +226,8 @@ function EmailRow({ email, isSelected, onSelect, onClick, isOpen, projects, onAs
                   />
                 </div>
               ) : (
-                /* Enhanced Plain Text Box */
-                <div className="bg-[#303134]/30 border border-[#5f6368]/30 rounded-lg p-5">
-                  <div className="text-[14px] text-[#e8eaed] leading-[1.6rem] whitespace-pre-wrap break-words">
+                <div className="bg-white ring-1 ring-black/[0.06] shadow-[0_6px_24px_rgba(0,0,0,0.05)] rounded-2xl p-6">
+                  <div className="text-[14px] text-zinc-800 leading-[1.65rem] whitespace-pre-wrap break-words">
                     {formatPlainText(bodyContent)}
                   </div>
                 </div>
@@ -211,50 +235,30 @@ function EmailRow({ email, isSelected, onSelect, onClick, isOpen, projects, onAs
             </div>
 
             {/* API ACTION CARDS */}
-            <div className="border-t border-[#4d5156] pt-6 flex flex-col md:flex-row gap-4">
-              <div className="flex-1 bg-[#202124] border border-[#5f6368] rounded-[8px] p-4 flex flex-col">
-                <div className="flex items-center gap-2 text-[#8ab4f8] text-[14px] font-medium mb-4">
-                  <LinkIcon size={18} /> Assign to Project
-                </div>
-
-                {email.project_suggestion && !email.project_id && (
-                  <div className="mb-4 bg-[#c2e7ff]/[0.12] rounded p-3 text-[13px]">
-                    <span className="font-bold text-[#8ab4f8] mr-2">Suggested Match:</span>
-                    <span className="text-[#e8eaed]">{email.project_suggestion.project_name}</span>
-                  </div>
-                )}
-
-                <div className="mt-auto flex gap-3">
-                  <select
-                    value={selProject}
-                    onChange={e => setSelProject(e.target.value)}
-                    className="flex-1 bg-[#303134] border border-[#5f6368] text-[#e8eaed] text-[14px] rounded px-3 py-1.5 focus:border-[#8ab4f8] outline-none hover:bg-[#3c4043] transition-colors appearance-none"
-                    disabled={assigning}
-                  >
-                    <option value="">Select project...</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <button
-                    onClick={handleAssign}
-                    disabled={!selProject || assigning}
-                    className="bg-[#8ab4f8] hover:bg-[#aecbfa] text-[#202124] px-6 py-1.5 rounded-[4px] text-[14px] font-medium transition-colors disabled:opacity-50 disabled:bg-[#3c4043] disabled:text-[#9aa0a6] h-[36px] flex items-center justify-center gap-2"
-                  >
-                    {assigning ? <Loader2 size={16} className="animate-spin" /> : null}
-                    {email.project_id ? 'Update' : 'Assign'}
-                  </button>
-                </div>
+            <div className="pt-2 flex flex-col md:flex-row gap-4">
+              <div className="flex-1 bg-white ring-1 ring-black/[0.06] shadow-[0_6px_24px_rgba(0,0,0,0.05)] rounded-2xl p-5 flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)]">
+                <div className="text-zinc-900 text-[15px] font-semibold mb-1.5">Ticket routing</div>
+                <p className="text-[13px] text-zinc-500 mb-5 leading-relaxed">Send this fetched email through PII scrubbing, intent detection, and specialist queue routing.</p>
+                <button
+                  onClick={handleRoute}
+                  disabled={routing || email.ticket_id}
+                  className="mt-auto self-start px-5 py-2.5 rounded-full text-white text-[14px] font-medium shadow-[0_4px_14px_rgba(0,113,227,0.35)] hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,113,227,0.45)] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+                  style={{ background: 'linear-gradient(135deg, #3aa0ff 0%, #0071e3 100%)' }}
+                >
+                  {routing ? 'Routing…' : (email.ticket_id ? 'Already routed' : 'Route email to ticket queue')}
+                </button>
               </div>
 
-              <div className="md:w-[280px] bg-[#202124] border border-[#5f6368] rounded-[8px] p-4 flex flex-col">
-                <div className="flex items-center gap-2 text-[#fbbc04] text-[14px] font-medium mb-2">
-                  <Cpu size={18} /> LangGraph Agent
+              <div className="md:w-[280px] bg-white ring-1 ring-black/[0.06] shadow-[0_6px_24px_rgba(0,0,0,0.05)] rounded-2xl p-5 flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.09)]">
+                <div className="text-zinc-900 text-[15px] font-semibold mb-1.5">
+                  LangGraph Agent
                 </div>
-                <p className="text-[12px] text-[#9aa0a6] mb-4">
+                <p className="text-[13px] text-zinc-500 mb-5 leading-relaxed">
                   Process this email through the automated AI pipeline.
                 </p>
                 <button
                   onClick={() => onProcess(email.id)}
-                  className="mt-auto border border-[#5f6368] text-[#8ab4f8] hover:bg-[#8ab4f8]/10 px-4 py-1.5 rounded-[4px] text-[14px] font-medium transition-colors h-[36px]"
+                  className="mt-auto self-start px-5 py-2.5 rounded-full bg-[#f5f5f7] hover:bg-[#ebebef] text-zinc-800 text-[14px] font-medium active:scale-95 transition-all duration-200"
                 >
                   Process Email
                 </button>
@@ -272,19 +276,15 @@ export default function Inbox() {
   const [loading, setLoading] = useState(false)
   const [openId, setOpenId] = useState(null)
   const [selectedIds, setSelectedIds] = useState(new Set())
-  const [projects, setProjects] = useState([])
   const [clusterModal, setClusterModal] = useState(false)
   const [clusterName, setClusterName] = useState('')
   const clusterRef = useRef(null)
+  const [query, setQuery] = useState('')
+  const [tab, setTab] = useState('all')
 
   useEffect(() => {
     loadEmails()
-    loadProjects()
   }, [])
-
-  useEffect(() => {
-    if (clusterModal) setTimeout(() => clusterRef.current?.focus(), 50)
-  }, [clusterModal])
 
   const loadEmails = async () => {
     setLoading(true)
@@ -298,10 +298,6 @@ export default function Inbox() {
     setLoading(false)
   }
 
-  const loadProjects = async () => {
-    try { const d = await getProjects(); setProjects(d.projects || []) } catch {}
-  }
-
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -311,15 +307,15 @@ export default function Inbox() {
   }
 
   const handleSelectAll = () => {
-    const emails = state?.emails || [];
-    if (selectedIds.size === emails.length && emails.length > 0) {
+    const list = visibleEmails;
+    if (list.length > 0 && list.every(e => selectedIds.has(e.id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(emails.map(e => e.id)));
+      setSelectedIds(new Set(list.map(e => e.id)));
     }
   }
 
-  const handleCluster = async () => {
+  /* const handleCluster = async () => {
     if (!clusterName.trim() || !selectedIds.size) return
     try {
       const r = await clusterManual(Array.from(selectedIds), clusterName.trim())
@@ -329,17 +325,23 @@ export default function Inbox() {
       setClusterModal(false)
       setClusterName('')
     } catch { toast?.('Cluster failed', 'warn') }
-  }
+  } */
 
-  const handleAssign = async (emailId, projectId) => {
-    if (!projectId) { toast?.('Select a project first', 'warn'); return }
+  const handleRoute = async (email) => {
     try {
-      const res = await attachEmailToProject(projectId, emailId)
+      const res = await createTicket({
+        id: email.id,
+        email_id: email.id,
+        thread_id: email.thread_id || email.threadId || null,
+        channel: 'email',
+        subject: email.subject || '',
+        content: email.body || email.snippet || '(empty)',
+      })
       if (res.error) throw new Error(res.error)
-      toast?.('Email linked to project', 'ok')
-      addLog?.('ok', `Email ${emailId} → project ${projectId}`)
-      dispatch?.({ type: 'SET_EMAILS', emails: (state?.emails || []).map(e => e.id === emailId ? { ...e, project_id: projectId } : e) })
-    } catch (e) { toast?.(e.message || 'Attach failed', 'warn') }
+      toast?.('Email routed to ticket queue', 'ok')
+      addLog?.('ok', `Email ${email.id} → ticket queue`)
+      dispatch?.({ type: 'SET_EMAILS', emails: (state?.emails || []).map(e => e.id === email.id ? { ...e, ticket_id: res.ticket.id } : e) })
+    } catch (e) { toast?.(e.message || 'Email routing failed', 'warn') }
   }
 
   const handleProcess = async (id) => {
@@ -348,64 +350,117 @@ export default function Inbox() {
   }
 
   const emails = state?.emails || []
+  const q = query.trim().toLowerCase()
+  const visibleEmails = emails.filter(e => {
+    if (tab === 'routed' && !e.ticket_id) return false
+    if (tab === 'pending' && e.ticket_id) return false
+    if (!q) return true
+    return [e.sender, e.subject, e.snippet].some(v => (v || '').toLowerCase().includes(q))
+  })
+  const routedCount = emails.filter(e => e.ticket_id).length
   const hasSelected = selectedIds.size > 0
-  const allSelected = emails.length > 0 && selectedIds.size === emails.length
+  const allSelected = visibleEmails.length > 0 && visibleEmails.every(e => selectedIds.has(e.id))
+  const TABS = [
+    { id: 'all', label: 'All', count: emails.length },
+    { id: 'pending', label: 'Not routed', count: emails.length - routedCount },
+    { id: 'routed', label: 'Routed', count: routedCount },
+  ]
 
   return (
-    <div className="min-h-screen w-full bg-[#202124] text-[#e8eaed] font-sans flex flex-col">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#4d5156]">
-        <div className="flex items-center gap-3 text-xl text-[#e8eaed]">
-          <InboxIcon size={24} className="text-[#e8eaed]" /> 
-          <span className="font-normal text-[22px]">Inbox</span>
+    <div className="w-full text-zinc-900 flex flex-col pb-10" style={{ fontFamily: FONT }}>
+      <style>{FX_CSS}</style>
+
+      <div className="ib-rise flex items-end justify-between pb-6">
+        <div>
+          <h1
+            className="text-[34px] font-semibold tracking-tight leading-none bg-clip-text text-transparent"
+            style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}
+          >
+            Inbox
+          </h1>
+          <p className="text-[13px] text-zinc-500 mt-2">Fetched emails, ready to route into specialist queues</p>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col max-w-[1400px] w-full mx-auto p-4 lg:p-6">
-        <div className="bg-[#202124] rounded-xl border border-[#4d5156] flex-1 flex flex-col overflow-hidden shadow-sm">
+      <div className="ib-rise flex-1 flex flex-col w-full" style={{ animationDelay: '90ms' }}>
+        <div className="bg-white rounded-3xl ring-1 ring-black/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.07)] flex-1 flex flex-col overflow-hidden">
           
-          <div className="h-[48px] border-b border-[#4d5156] flex items-center px-4 justify-between bg-[#202124]">
+          {/* macOS-style window controls (decorative only) */}
+          <div className="group/win relative h-[40px] flex items-center px-4 bg-[#f5f5f7] border-b border-black/[0.06] select-none" aria-hidden="true">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#ff5f57] ring-1 ring-black/10 flex items-center justify-center text-[9px] leading-none font-bold text-black/50">
+                <span className="opacity-0 group-hover/win:opacity-100 transition-opacity">×</span>
+              </span>
+              <span className="w-3 h-3 rounded-full bg-[#febc2e] ring-1 ring-black/10 flex items-center justify-center text-[11px] leading-none font-bold text-black/50">
+                <span className="opacity-0 group-hover/win:opacity-100 transition-opacity -mt-[1px]">−</span>
+              </span>
+              <span className="w-3 h-3 rounded-full bg-[#28c840] ring-1 ring-black/10 flex items-center justify-center text-[10px] leading-none font-bold text-black/50">
+                <span className="opacity-0 group-hover/win:opacity-100 transition-opacity">+</span>
+              </span>
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 text-[12px] font-medium text-zinc-500">Inbox</div>
+          </div>
+
+          {/* Gmail-style search */}
+          <div className="px-4 py-3 bg-white border-b border-black/[0.06]">
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search mail"
+              className="w-full max-w-[640px] bg-[#eaf1fb] text-zinc-900 placeholder:text-zinc-500 px-5 py-2.5 rounded-full text-[14px] outline-none focus:bg-white focus:shadow-[0_1px_1px_0_rgba(65,69,73,0.3),0_1px_3px_1px_rgba(65,69,73,0.15)] transition-all duration-200"
+            />
+          </div>
+
+          {/* Gmail-style category tabs */}
+          <div className="flex items-stretch border-b border-black/[0.08] bg-white px-2 overflow-x-auto">
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`relative px-5 h-[46px] text-[14px] font-medium whitespace-nowrap transition-colors ${tab === t.id ? 'text-[#0b57d0]' : 'text-zinc-500 hover:bg-[#f5f5f7]'}`}
+              >
+                {t.label}
+                <span className={`ml-2 text-[12px] ${tab === t.id ? 'text-[#0b57d0]' : 'text-zinc-400'}`}>{t.count}</span>
+                {tab === t.id && <span className="absolute left-3 right-3 bottom-0 h-[3px] rounded-t-full bg-[#0b57d0]" />}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-[56px] border-b border-black/[0.06] flex items-center px-4 justify-between bg-[#fafafc]">
             <div className="flex items-center gap-2">
               <div 
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#303134] cursor-pointer text-[#9aa0a6]"
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/[0.05] cursor-pointer transition-colors"
                 onClick={handleSelectAll}
                 title="Select all"
               >
-                <div className={`w-[18px] h-[18px] border-2 rounded-[2px] flex items-center justify-center ${allSelected ? 'border-[#8ab4f8] bg-[#8ab4f8]' : selectedIds.size > 0 ? 'border-[#8ab4f8] bg-[#8ab4f8]' : 'border-[#9aa0a6]'}`}>
-                  {allSelected && <Check size={14} className="text-[#202124] stroke-[3]" />}
-                  {!allSelected && selectedIds.size > 0 && <div className="w-[10px] h-[2px] bg-[#202124]" />}
-                </div>
+                <Box checked={allSelected} partial={!allSelected && selectedIds.size > 0} />
               </div>
               
-              <div 
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#303134] cursor-pointer text-[#9aa0a6]"
+              <button
+                className="px-4 py-1.5 rounded-full bg-white ring-1 ring-black/[0.08] shadow-sm text-[13px] font-medium text-zinc-700 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.10)] active:scale-95 transition-all duration-200"
                 onClick={loadEmails}
                 title="Refresh emails"
               >
-                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              </div>
+                {loading ? 'Refreshing…' : 'Refresh'}
+              </button>
 
               {hasSelected && (
-                <div className="w-[1px] h-5 bg-[#4d5156] mx-2" />
-              )}
-              {hasSelected && (
-                <button
-                  onClick={() => setClusterModal(true)}
-                  className="flex items-center gap-2 text-[#e8eaed] bg-[#3c4043] hover:bg-[#4d5156] px-4 py-1.5 rounded-full text-[13px] font-medium transition-colors"
-                >
-                  <CheckSquare size={16} /> Cluster Selected ({selectedIds.size})
-                </button>
+                <>
+                  <div className="w-[1px] h-5 bg-black/[0.1] mx-2" />
+                  <span className="text-[12px] font-medium text-[#0071e3]">{selectedIds.size} selected</span>
+                </>
               )}
             </div>
 
-            <div className="text-[#9aa0a6] text-[12px] pr-2">
-              {emails.length > 0 ? `Total: ${emails.length}` : ''}
+            <div className="text-zinc-400 text-[12px] pr-2">
+              {emails.length > 0 ? `${visibleEmails.length} of ${emails.length}` : ''}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {emails.length > 0 ? (
-              <div className="flex flex-col pb-10">
-                {emails.map(e => (
+            {visibleEmails.length > 0 ? (
+              <div className="flex flex-col pb-4">
+                {visibleEmails.map(e => (
                   <EmailRow
                     key={e.id}
                     email={e}
@@ -413,69 +468,21 @@ export default function Inbox() {
                     onSelect={toggleSelect}
                     onClick={() => setOpenId(openId === e.id ? null : e.id)}
                     isOpen={openId === e.id}
-                    projects={projects}
-                    onAssign={handleAssign}
+                    onRoute={handleRoute}
                     onProcess={handleProcess}
                   />
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-[#9aa0a6]">
-                <span className="text-[16px]">
-                  {loading ? 'Fetching emails...' : 'Your inbox is empty.'}
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-zinc-400">
+                <span className="text-[15px]">
+                  {loading ? 'Fetching emails...' : (emails.length > 0 ? 'No conversations match your search.' : 'Your inbox is empty.')}
                 </span>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {clusterModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60"
-          onClick={() => setClusterModal(false)}
-        >
-          <div
-            className="bg-[#202124] rounded-[8px] w-full max-w-[400px] shadow-[0_24px_38px_3px_rgba(0,0,0,0.14),0_9px_46px_8px_rgba(0,0,0,0.12),0_11px_15px_-7px_rgba(0,0,0,0.2)] overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <h3 className="text-[16px] font-medium text-[#e8eaed] mb-4">Create cluster from {selectedIds.size} conversations</h3>
-              
-              <div className="relative mt-2">
-                <input
-                  ref={clusterRef}
-                  type="text"
-                  value={clusterName}
-                  onChange={e => setClusterName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleCluster(); if (e.key === 'Escape') setClusterModal(false) }}
-                  className="w-full bg-transparent border border-[#5f6368] rounded-[4px] text-[#e8eaed] px-3 py-3 text-[16px] outline-none focus:border-[#8ab4f8] focus:border-2 peer placeholder-transparent"
-                  placeholder="Cluster name"
-                />
-                <label className={`absolute left-3 px-1 bg-[#202124] text-[#9aa0a6] text-[12px] transition-all peer-placeholder-shown:text-[16px] peer-placeholder-shown:top-3.5 peer-focus:-top-2 peer-focus:text-[12px] peer-focus:text-[#8ab4f8] ${clusterName ? '-top-2' : 'top-3.5'}`}>
-                  Cluster name
-                </label>
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-2 px-6 py-4">
-              <button
-                onClick={() => setClusterModal(false)}
-                className="px-4 py-2 text-[#8ab4f8] hover:bg-[#8ab4f8]/10 rounded-[4px] text-[14px] font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCluster}
-                disabled={!clusterName.trim()}
-                className="px-4 py-2 text-[#8ab4f8] hover:bg-[#8ab4f8]/10 rounded-[4px] text-[14px] font-medium transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

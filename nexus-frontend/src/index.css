@@ -93,22 +93,29 @@
     color: var(--color-brand-text);
     font-family: 'DM Sans', sans-serif;
     overflow-x: hidden;
-    cursor: none;
+    cursor: auto; /* was "none": the custom cursor has been removed, so the real pointer must show */
     scrollbar-width: thin;
     scrollbar-color: rgba(0,181,226,0.25) transparent;
+  }
+
+  /* Normal pointer feedback on clickable things */
+  button:not(:disabled),
+  a[href],
+  [role="button"],
+  select,
+  summary {
+    cursor: pointer;
+  }
+
+  /* Pages already converted to the white theme (toggled by App.jsx) */
+  body.light-shell {
+    background-color: #ffffff;
+    scrollbar-color: rgba(0,0,0,0.25) transparent;
   }
 
 }
 
 @layer components {
-
-  /* ─── CURSOR ─── */
-  .cursor {
-    @apply fixed w-[10px] h-[10px] bg-brand-blue rounded-full pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 mix-blend-difference;
-  }
-  .cursor-ring {
-    @apply fixed w-[36px] h-[36px] border border-[rgba(0,181,226,0.4)] rounded-full pointer-events-none z-[9998] -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 ease-out;
-  }
 
   /* ─── PAGE TRANSITION ─── */
   .page-enter {

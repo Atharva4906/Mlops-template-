@@ -70,7 +70,7 @@ export default function UploadResources() {
     <div>
       <div className="ph">
         <div className="pt">Upload Resources</div>
-        <div className="ps-h">Upload a meeting transcript or chat log — link it to a project and NEXUS folds it into the BRD context</div>
+        <div className="ps-h">Upload a meeting transcript or chat log — link it to a project and Ticket Routing Agent folds it into the BRD context</div>
       </div>
       <div className="g2">
         <div>

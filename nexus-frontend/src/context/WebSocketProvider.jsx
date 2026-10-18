@@ -15,7 +15,7 @@ export default function WebSocketProvider({ children }) {
 
       ws.onopen = () => {
         setWsStatus('connected')
-        addLog('ok', 'NEXUS WebSocket connected')
+        addLog('ok', 'Ticket Routing Agent WebSocket connected')
       }
 
       ws.onclose = () => {
@@ -46,6 +46,13 @@ export default function WebSocketProvider({ children }) {
         if (msg.meetings) dispatch({ type: 'SET_EVENTS', events: msg.meetings })
         if (msg.stats) dispatch({ type: 'SET_STATS', stats: msg.stats })
         break
+      case 'ticket_created':
+        dispatch({ type: 'PREPEND_TICKET', ticket: msg.payload })
+        toast('New routed ticket: ' + (msg.payload?.intent || 'support'), 'ok')
+        break
+      case 'ticket_updated':
+        dispatch({ type: 'UPDATE_TICKET', ticket: msg.payload })
+        break
       case 'log':
         addLog(msg.level, msg.msg)
         break
@@ -64,6 +71,7 @@ export default function WebSocketProvider({ children }) {
         dispatch({ type: 'PREPEND_EVENT', event: msg.meeting })
         toast('Calendar event created: ' + (msg.meeting?.title || ''), 'ok')
         break
+      /*
       case 'brd_stage':
         if (msg.project_id) dispatch({ type: 'SET_BRD_RUNNING', projectId: msg.project_id })
         break
@@ -72,6 +80,7 @@ export default function WebSocketProvider({ children }) {
         if (msg.project_id) dispatch({ type: 'CLEAR_BRD_RUNNING', projectId: msg.project_id })
         toast('BRD ready: ' + (msg.title || ''), 'ok')
         break
+      */
       case 'auth':
         dispatch({ type: 'SET_AUTH', authenticated: true, email: msg.email })
         toast('Google connected!', 'ok')

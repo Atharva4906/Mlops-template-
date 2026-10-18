@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Awaitable, Optional
 
 import services.db_service as db_service
+from services.ticket_api import route_ingested_source
 from services.parsers import MultiModalParsers
 from services.ingestion_enhancer import enhancer
 
@@ -69,6 +70,12 @@ async def scan_once(
             doc_type = parsed.get("source_type", "document")
             content = cleaned_text or parsed.get("clean_text", "")
             db_service.add_document(project_id, path.name, content, doc_type)
+            route_ingested_source({
+                "id": key,
+                "channel": "email" if doc_type == "email" else "chat",
+                "subject": path.name,
+                "content": content,
+            })
             seen_paths.add(key)
             added += 1
             last_ingested.append({
