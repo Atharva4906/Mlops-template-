@@ -92,8 +92,8 @@ On a successful push to `main`, the workflow builds and publishes two
 container images to GitHub Container Registry:
 
 ```text
-ghcr.io/<owner>/<repository>/backend:latest
-ghcr.io/<owner>/<repository>/frontend:latest
+ghcr.io/<owner>/ticket-routing-agent-backend:latest
+ghcr.io/<owner>/ticket-routing-agent-frontend:latest
 ```
 
 Each image also receives a commit-SHA tag. Runtime credentials must be
