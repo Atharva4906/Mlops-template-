@@ -1,56 +1,59 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
-import { 
-  RefreshCw, ShieldCheck, ShieldAlert,
-  LogIn, Loader2, Zap, Cpu, Settings as SettingsIcon,
-  Fingerprint, Activity
-} from 'lucide-react'
 import { getAuthStatus, scanIngest, login } from '../services/api'
 
-// Polished Switch Component
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif'
+
+const FX_CSS = `
+@keyframes st-rise { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: none } }
+@keyframes st-ring { 0% { box-shadow: 0 0 0 0 rgba(244,63,94,.35) } 100% { box-shadow: 0 0 0 12px rgba(244,63,94,0) } }
+.st-rise { animation: st-rise .55s cubic-bezier(.2,.8,.2,1) both }
+.st-ring { animation: st-ring 1.8s ease-out infinite }
+@media (prefers-reduced-motion: reduce) { .st-rise, .st-ring { animation: none !important } }
+`
+
+// iOS-style switch row
 function ProtocolSwitch({ title, description, checked, onChange, isRequired, badgeText }) {
   return (
-    <div 
+    <div
       onClick={() => onChange(!checked)}
-      className={`group flex items-start gap-4 p-4 rounded-sm border transition-all cursor-pointer mb-3 ${
-        checked ? 'border-brand-blue/40 bg-brand-blue/5' : 'border-brand-border bg-[#0a0a0a] hover:border-brand-border/80'
+      role="switch"
+      aria-checked={checked}
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!checked) } }}
+      className={`group mb-3 flex cursor-pointer items-start gap-4 rounded-3xl p-5 ring-1 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] ${
+        checked ? 'bg-white ring-[#0071e3]/30 shadow-[0_8px_26px_rgba(0,113,227,0.10)]' : 'bg-[#f5f5f7] ring-black/[0.05]'
       }`}
     >
-      <div className={`mt-1 w-8 h-4 rounded-full relative transition-colors shrink-0 ${checked ? 'bg-brand-blue' : 'bg-white/10'}`}>
-        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-black transition-all ${checked ? 'left-4.5' : 'left-0.5'}`} />
-      </div>
       <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className={`font-space text-[11px] uppercase tracking-widest transition-colors ${checked ? 'text-white' : 'text-brand-muted'}`}>
-            {title}
-          </span>
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-semibold text-zinc-900">{title}</span>
           {badgeText && (
-            <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-space uppercase tracking-tighter ${
-              isRequired ? 'bg-red-500/20 text-red-400' : 'bg-brand-blue/20 text-brand-blue'
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ${
+              isRequired ? 'bg-rose-50 text-rose-700 ring-rose-200/70' : 'bg-sky-50 text-sky-700 ring-sky-200/70'
             }`}>
               {badgeText}
             </span>
           )}
         </div>
-        <div className="font-dm text-[12px] text-brand-muted/70 leading-relaxed group-hover:text-brand-muted transition-colors">
-          {description}
-        </div>
+        <div className="text-[13px] leading-relaxed text-zinc-500">{description}</div>
+      </div>
+      <div className={`relative mt-0.5 h-[28px] w-[48px] shrink-0 rounded-full transition-colors duration-300 ${checked ? 'bg-[#34c759]' : 'bg-zinc-300'}`}>
+        <div className={`absolute top-[2px] h-[24px] w-[24px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.3)] transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ${checked ? 'left-[22px]' : 'left-[2px]'}`} />
       </div>
     </div>
   )
 }
 
-function ParameterInput({ label, type = 'text', value, onChange, icon: Icon }) {
+function ParameterInput({ label, type = 'text', value, onChange }) {
   return (
-    <div className="mb-6 relative group">
-      <label className="flex items-center gap-2 font-space text-[9px] tracking-[0.2em] text-brand-muted uppercase mb-2 group-hover:text-brand-yellow transition-colors">
-        {Icon && <Icon size={10} />} {label}
-      </label>
+    <div className="mb-6 relative">
+      <label className="mb-2 block text-[13px] font-semibold text-zinc-900">{label}</label>
       <input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-[#050505] border border-brand-border text-white p-3 rounded-sm font-space text-[12px] outline-none focus:border-brand-yellow/50 focus:bg-brand-yellow/5 transition-all"
+        className="w-full rounded-2xl bg-[#f5f5f7] px-4 py-3 text-[15px] text-zinc-900 outline-none ring-1 ring-transparent transition-all duration-200 focus:bg-white focus:ring-2 focus:ring-[#0071e3] focus:shadow-[0_0_0_6px_rgba(0,113,227,0.12)]"
       />
     </div>
   )
@@ -105,70 +108,62 @@ export default function Settings() {
     setClustering(false)
   } */
 
+  const sectionTitle = 'mb-5 text-[15px] font-semibold text-zinc-900'
+
   return (
-    <div className="pb-24">
+    <div className="pb-24 text-zinc-900" style={{ fontFamily: FONT }}>
+      <style>{FX_CSS}</style>
+
       {/* Header Area */}
-      <div className="mb-12 border-b border-brand-border/30 pb-8">
-        <div className="htag mb-4 font-space text-[11px] uppercase tracking-widest text-brand-muted flex items-center gap-2">
-          <SettingsIcon size={12} className="text-brand-blue" />
-          System Configuration / v2.4
-        </div>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <h1 className="font-bebas text-[clamp(40px,7vw,84px)] leading-[0.85] tracking-tight uppercase text-white">
-            Agent Directives
-          </h1>
-          {/*
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="group relative bg-white text-black px-10 py-4 rounded-sm font-space text-[11px] uppercase tracking-[0.2em] font-bold transition-all hover:bg-brand-blue hover:text-black overflow-hidden active:scale-95 disabled:opacity-50"
-          >
-            <div className="relative z-10 flex items-center gap-2">
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-              {isSaving ? 'Committing...' : 'Deploy Protocol'}
-            </div>
-          </button> */}
-        </div>
+      <div className="st-rise mb-12 border-b border-black/[0.07] pb-8">
+        <div className="mb-3 text-[13px] font-semibold text-[#0071e3]">System configuration / v2.4</div>
+        <h1
+          className="bg-clip-text text-[clamp(36px,6vw,60px)] font-semibold leading-[1.02] tracking-tight text-transparent"
+          style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}
+        >
+          Agent Directives
+        </h1>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-16 items-start">
+      <div className="grid items-start gap-10 lg:grid-cols-2">
         {/* Left Column: Automation Protocols */}
         <div className="space-y-10">
-          
-          {/* Status Panel */}
-          <div className={`p-6 border rounded-sm transition-all duration-700 relative overflow-hidden ${
-            authStatus ? 'border-brand-blue/30 bg-brand-blue/[0.02]' : 'border-red-500/30 bg-red-500/[0.02]'
-          }`}>
-            <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-10 ${authStatus ? 'bg-brand-blue' : 'bg-red-500'}`} />
-            <div className="flex items-center justify-between">
+
+          {/* Auth status panel */}
+          <div
+            className={`st-rise relative overflow-hidden rounded-3xl p-6 ring-1 transition-colors duration-700 ${
+              authStatus ? 'bg-emerald-50/70 ring-emerald-200/70' : 'bg-rose-50/70 ring-rose-200/70'
+            }`}
+            style={{ animationDelay: '80ms' }}
+          >
+            <div className={`pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl opacity-40 ${authStatus ? 'bg-emerald-300' : 'bg-rose-300'}`} />
+            <div className="relative flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-sm border flex items-center justify-center transition-colors ${
-                  authStatus ? 'border-brand-blue text-brand-blue bg-brand-blue/10' : 'border-red-500 text-red-500 animate-pulse'
-                }`}>
-                  {authStatus ? <Fingerprint size={24} /> : <ShieldAlert size={24} />}
-                </div>
+                <div className={`h-3 w-3 shrink-0 rounded-full ${authStatus ? 'bg-emerald-500' : 'bg-rose-500 st-ring'}`} aria-hidden="true" />
                 <div>
-                  <div className="font-bebas text-2xl text-white tracking-widest">
-                    {authStatus ? 'AUTH BRIDGE: ACTIVE' : 'AUTH BRIDGE: DISCONNECTED'}
+                  <div className="text-[17px] font-semibold tracking-tight text-zinc-900">
+                    {authStatus ? 'Auth bridge: active' : 'Auth bridge: disconnected'}
                   </div>
-                  <div className="font-space text-[10px] uppercase tracking-widest text-brand-muted">
+                  <div className="mt-0.5 text-[13px] text-zinc-500">
                     {authStatus ? `Identity: ${emailOwner}` : 'System restricted. Re-authenticate.'}
                   </div>
                 </div>
               </div>
               {!authStatus && (
-                <button onClick={login} className="bg-white text-black px-4 py-2 font-space text-[10px] uppercase tracking-widest font-bold hover:bg-brand-blue transition-colors">
+                <button
+                  onClick={login}
+                  className="shrink-0 rounded-full px-5 py-2 text-[13px] font-medium text-white shadow-[0_4px_14px_rgba(0,113,227,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,113,227,0.45)] active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #3aa0ff 0%, #0071e3 100%)' }}
+                >
                   Login
                 </button>
               )}
             </div>
           </div>
 
-          <section>
-            <div className="font-space text-[10px] tracking-[0.3em] text-brand-blue uppercase mb-6 flex items-center gap-2">
-              <Cpu size={14} /> Automation Protocols
-            </div>
-            <ProtocolSwitch 
+          <section className="st-rise" style={{ animationDelay: '160ms' }}>
+            <div className={sectionTitle}>Automation protocols</div>
+            <ProtocolSwitch
               title="Auto-Approve Low Urgency"
               description="Agent can bypass human review for tier-3 queries."
               checked={autoApprove}
@@ -176,13 +171,13 @@ export default function Settings() {
               badgeText="High Risk"
               isRequired={true}
             />
-            <ProtocolSwitch 
+            <ProtocolSwitch
               title="Calendar Synthesis"
               description="Direct injection of meeting signals into the Ticket Routing Agent Google API integration."
               checked={autoCalendar}
               onChange={setAutoCalendar}
             />
-            <ProtocolSwitch 
+            <ProtocolSwitch
               title="Sentiment Escalation"
               description="Auto-route high-emotion signals to human override."
               checked={sentiment}
@@ -194,58 +189,63 @@ export default function Settings() {
         </div>
 
         {/* Right Column: Parameters & Triggers */}
-        <div className="space-y-12">
-          
-          <section className="bg-[#050505] border border-brand-border p-8 rounded-sm">
-            <div className="font-space text-[10px] tracking-[0.3em] text-brand-yellow uppercase mb-8">
-              Operational Limits
-            </div>
-            
-            <ParameterInput label="Buffer Window (Mins)" type="number" value={buf} onChange={setBuf} icon={Activity} />
-            
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <ParameterInput label="Cycle Start" type="time" value={ws} onChange={setWs} />
-              <ParameterInput label="Cycle End" type="time" value={we} onChange={setWe} />
+        <div className="space-y-10">
+
+          <section className="st-rise rounded-3xl bg-white p-8 ring-1 ring-black/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.06)]" style={{ animationDelay: '120ms' }}>
+            <div className={sectionTitle}>Operational limits</div>
+
+            <ParameterInput label="Buffer window (mins)" type="number" value={buf} onChange={setBuf} />
+
+            <div className="mb-8 grid grid-cols-2 gap-6">
+              <ParameterInput label="Cycle start" type="time" value={ws} onChange={setWs} />
+              <ParameterInput label="Cycle end" type="time" value={we} onChange={setWe} />
             </div>
 
             <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <label className="font-space text-[9px] tracking-[0.2em] text-brand-muted uppercase">Confidence Threshold</label>
-                <span className="font-bebas text-2xl text-brand-yellow">{thr}%</span>
+              <div className="flex items-end justify-between">
+                <label className="text-[13px] font-semibold text-zinc-900">Confidence threshold</label>
+                <span className="text-[28px] font-semibold leading-none tracking-tight text-[#0071e3] tabular-nums">{thr}%</span>
               </div>
-              <div className="relative h-1.5 bg-white/10 rounded-full group">
-                <div 
-                  className="absolute h-full rounded-full transition-all duration-300" 
-                  style={{ width: `${thr}%`, background: 'linear-gradient(90deg, #00ff9d, #FFE234)' }}
+              <div className="group relative h-2 rounded-full bg-black/[0.08]">
+                <div
+                  className="absolute h-full rounded-full transition-all duration-150"
+                  style={{ width: `${thr}%`, background: 'linear-gradient(90deg, #3aa0ff, #0071e3)' }}
                 />
-                <input 
-                  type="range" min="0" max="100" value={thr} 
+                <div
+                  className="pointer-events-none absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] ring-1 ring-black/[0.06] transition-all duration-150 group-hover:scale-110"
+                  style={{ left: `calc(${thr}% - 12px)` }}
+                />
+                <input
+                  type="range" min="0" max="100" value={thr}
                   onChange={e => setThr(e.target.value)}
-                  className="absolute w-full h-full opacity-0 cursor-pointer z-10"
+                  aria-label="Confidence threshold"
+                  className="absolute -top-2 h-6 w-full cursor-pointer opacity-0"
                 />
               </div>
-              <div className="flex justify-between font-space text-[8px] text-brand-muted/40 uppercase tracking-tighter">
-                <span>0% Human Only</span>
-                <span>100% Fully Autonomous</span>
+              <div className="flex justify-between text-[11px] text-zinc-400">
+                <span>0% Human only</span>
+                <span>100% Fully autonomous</span>
               </div>
             </div>
           </section>
 
-          <section className="space-y-4">
-            <div className="font-space text-[10px] tracking-[0.3em] text-red-400 uppercase mb-4">Pipeline Overrides</div>
-            
+          <section className="st-rise" style={{ animationDelay: '200ms' }}>
+            <div className={sectionTitle}>Pipeline overrides</div>
+
             <button
               onClick={handleForceSync}
               disabled={syncing}
-              className="w-full flex items-center justify-between p-5 border border-brand-border bg-[#0a0a0a] hover:border-red-500/50 group transition-all"
+              className="group flex w-full items-center justify-between rounded-3xl bg-[#f5f5f7] p-5 text-left ring-1 ring-black/[0.05] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_32px_rgba(244,63,94,0.12)] hover:ring-rose-200 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
             >
-              <div className="text-left flex items-center gap-4">
-                <RefreshCw size={18} className={`text-brand-muted group-hover:text-red-400 ${syncing ? 'animate-spin text-red-400' : ''}`} />
-                <div>
-                  <div className="font-bebas text-lg text-white group-hover:text-red-400">Trigger Gmail Scrape</div>
-                  <div className="font-dm text-[11px] text-brand-muted uppercase tracking-tight mt-0.5">Force context ingestion</div>
+              <div>
+                <div className="text-[16px] font-semibold text-zinc-900 transition-colors group-hover:text-rose-600">
+                  {syncing ? 'Gmail scrape running…' : 'Trigger Gmail scrape'}
                 </div>
+                <div className="mt-0.5 text-[13px] text-zinc-500">Force context ingestion</div>
               </div>
+              <span className="rounded-full bg-white px-4 py-1.5 text-[12px] font-medium text-zinc-600 ring-1 ring-black/[0.06] transition-colors group-hover:text-rose-600">
+                {syncing ? 'Running' : 'Run now'}
+              </span>
             </button>
 
             {/*
@@ -255,7 +255,6 @@ export default function Settings() {
               className="w-full flex items-center justify-between p-5 border border-brand-border bg-[#0a0a0a] hover:border-brand-yellow/50 group transition-all"
             >
               <div className="text-left flex items-center gap-4">
-                <Network size={18} className={`text-brand-muted group-hover:text-brand-yellow ${clustering ? 'animate-pulse text-brand-yellow' : ''}`} />
                 <div>
                   <div className="font-bebas text-lg text-white group-hover:text-brand-yellow">Re-Cluster Nodes</div>
                   <div className="font-dm text-[11px] text-brand-muted uppercase tracking-tight mt-0.5">Reset grouping algorithm</div>

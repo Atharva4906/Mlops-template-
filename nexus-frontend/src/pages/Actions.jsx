@@ -1,7 +1,15 @@
 import { useEffect, useState, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import { getActions, approveAction, rejectAction } from '../services/api'
-import { Activity, CheckCircle2, XCircle, Clock, Loader2, MailCheck, AlertTriangle, Shield } from 'lucide-react'
+
+const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif'
+
+const FX_CSS = `
+@keyframes ac-rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+.ac-rise { animation: ac-rise .5s cubic-bezier(.2,.8,.2,1) both }
+.ac-seg-ind { transition: transform .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1) }
+@media (prefers-reduced-motion: reduce) { .ac-rise { animation: none !important } .ac-seg-ind { transition: none } }
+`
 
 // Helper to format time cleanly
 const FT = iso => {
@@ -11,23 +19,22 @@ const FT = iso => {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// Polished, muted accent colors instead of bright raw neons
+// Soft light-theme pill styles
 const INTENT_THEME = {
-  schedule: { text: '#38bdf8', bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.2)' },
-  escalate: { text: '#fb7185', bg: 'rgba(251, 113, 133, 0.1)', border: 'rgba(251, 113, 133, 0.2)' },
-  status: { text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.2)' },
-  general: { text: '#a1a1aa', bg: 'rgba(161, 161, 170, 0.1)', border: 'rgba(161, 161, 170, 0.2)' },
+  schedule: 'text-sky-700 bg-sky-50 ring-sky-200/70',
+  escalate: 'text-rose-700 bg-rose-50 ring-rose-200/70',
+  status: 'text-amber-700 bg-amber-50 ring-amber-200/70',
+  general: 'text-zinc-600 bg-[#f5f5f7] ring-black/[0.05]',
 }
 
-// Sophisticated status badges
 const STATUS_META = {
-  pending: { label: 'Pending Review', text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.2)' },
-  sent: { label: 'Sent', text: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', border: 'rgba(52, 211, 153, 0.2)' },
-  approved: { label: 'Sent', text: '#34d399', bg: 'rgba(52, 211, 153, 0.1)', border: 'rgba(52, 211, 153, 0.2)' },
-  rejected: { label: 'Rejected', text: '#f87171', bg: 'rgba(248, 113, 113, 0.1)', border: 'rgba(248, 113, 113, 0.2)' },
-  escalated: { label: 'Escalated', text: '#fb7185', bg: 'rgba(251, 113, 133, 0.1)', border: 'rgba(251, 113, 133, 0.2)' },
-  escalation: { label: 'Escalated', text: '#fb7185', bg: 'rgba(251, 113, 133, 0.1)', border: 'rgba(251, 113, 133, 0.2)' },
-  pending_escalation: { label: 'Flagged (Review)', text: '#fbbf24', bg: 'rgba(251, 191, 36, 0.1)', border: 'rgba(251, 191, 36, 0.2)' },
+  pending: { label: 'Pending Review', cls: 'text-amber-700 bg-amber-50 ring-amber-200/70', tone: 'text-amber-700' },
+  sent: { label: 'Sent', cls: 'text-emerald-700 bg-emerald-50 ring-emerald-200/70', tone: 'text-emerald-700' },
+  approved: { label: 'Sent', cls: 'text-emerald-700 bg-emerald-50 ring-emerald-200/70', tone: 'text-emerald-700' },
+  rejected: { label: 'Rejected', cls: 'text-red-700 bg-red-50 ring-red-200/70', tone: 'text-red-700' },
+  escalated: { label: 'Escalated', cls: 'text-rose-700 bg-rose-50 ring-rose-200/70', tone: 'text-rose-700' },
+  escalation: { label: 'Escalated', cls: 'text-rose-700 bg-rose-50 ring-rose-200/70', tone: 'text-rose-700' },
+  pending_escalation: { label: 'Flagged (Review)', cls: 'text-amber-700 bg-amber-50 ring-amber-200/70', tone: 'text-amber-700' },
 }
 
 const ESCALATED_STATUSES = ['escalated', 'escalation']
@@ -77,7 +84,7 @@ function ActionRow({ action, globalIdx, onUpdate }) {
 
   return (
     <div
-      className={`relative border-b border-white/10 group transition-colors duration-200 ${expanded ? 'bg-white/[0.02]' : 'hover:bg-white/[0.02]'}`}
+      className={`relative border-b border-black/[0.06] last:border-b-0 group transition-colors duration-200 ${expanded ? 'bg-[#fafafc]' : 'hover:bg-[#f5f5f7]'}`}
       style={{
         opacity: dismissing ? 0 : 1,
         transform: dismissing === 'approve' ? 'translateY(-10px)' : dismissing === 'reject' ? 'translateX(16px)' : 'none',
@@ -85,66 +92,55 @@ function ActionRow({ action, globalIdx, onUpdate }) {
       }}
       onClick={() => setExpanded(e => !e)}
     >
-      {/* Escalation Left-Border Indicator */}
+      {/* Escalation left-edge indicator */}
       {(isEscalated || isFlagged) && (
-        <div className={`absolute left-0 top-0 bottom-0 w-[2px] ${isEscalated ? 'bg-rose-500/50' : 'bg-amber-400/50'}`} />
+        <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${isEscalated ? 'bg-gradient-to-b from-rose-400 to-rose-600' : 'bg-gradient-to-b from-amber-300 to-amber-500'}`} />
       )}
 
       <div className="flex items-start gap-4 p-5 cursor-pointer">
-        {/* Clean Monospace Number */}
-        <div className="pt-1 w-6 shrink-0 font-mono text-xs text-zinc-500 font-medium">
+        <div className="pt-1 w-6 shrink-0 text-[13px] font-semibold tabular-nums text-zinc-400">
           {String(globalIdx + 1).padStart(2, '0')}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-            <span className="font-sans text-lg font-medium text-zinc-100 tracking-tight leading-none">
+            <span className="text-[17px] font-semibold text-zinc-900 tracking-tight leading-none">
               {(a.email?.sender || 'Unknown').split('@')[0]}
             </span>
-            
-            {/* Intent Pill */}
-            <span
-              className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-medium"
-              style={{ color: intTheme.text, backgroundColor: intTheme.bg, borderColor: intTheme.border }}
-            >
+
+            <span className={`text-[11px] font-medium capitalize px-2.5 py-0.5 rounded-full ring-1 ${intTheme}`}>
               {a.intent || 'general'}
             </span>
-            
-            {/* Status Pill */}
-            <span
-              className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-medium ml-auto"
-              style={{ color: sm.text, backgroundColor: sm.bg, borderColor: sm.border }}
-            >
-              {sm.label}
-            </span>
-            
+
             {typeof confidence === 'number' && (
-              <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-white/10 text-zinc-400 flex items-center gap-1 font-medium bg-white/5">
-                <Shield size={10} /> {Math.round(confidence * 100)}%
+              <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#f5f5f7] text-zinc-600 ring-1 ring-black/[0.05]">
+                Confidence {Math.round(confidence * 100)}%
               </span>
             )}
+
+            <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ring-1 ml-auto ${sm.cls}`}>
+              {sm.label}
+            </span>
           </div>
 
-          <div className="font-sans text-sm text-zinc-400 truncate mb-1">
+          <div className="text-[14px] text-zinc-500 truncate mb-1">
             {a.email?.subject || '—'}
           </div>
 
           {(isEscalated || isFlagged) && escalationReason && (
-            <div className="flex items-center gap-1.5 text-xs text-rose-400 mb-1 font-medium">
-              <AlertTriangle size={12} />
-              <span>{escalationReason}</span>
+            <div className="text-[12px] text-rose-600 mb-1 font-medium">
+              {escalationReason}
             </div>
           )}
 
           {a.draft_body && !expanded && (
-            <p className="font-sans text-sm text-zinc-500 line-clamp-2 leading-relaxed mt-1">
+            <p className="text-[14px] text-zinc-400 line-clamp-2 leading-relaxed mt-1">
               {a.draft_body}
             </p>
           )}
 
           {!expanded && !isSent && a.draft_body && (
-            <div className="font-mono text-[10px] text-blue-400 mt-2 uppercase tracking-wider font-medium opacity-80">
+            <div className="text-[12px] text-[#0071e3] mt-2 font-medium transition-transform duration-200 group-hover:translate-x-1">
               Click to review draft →
             </div>
           )}
@@ -162,14 +158,12 @@ function ActionRow({ action, globalIdx, onUpdate }) {
         <div style={{ overflow: 'hidden' }}>
           {expanded && (
             <div className="pl-14 pr-5 pb-6" onClick={e => e.stopPropagation()}>
-              
+
               <div className="grid md:grid-cols-2 gap-6 mt-2">
                 {/* Original Message */}
                 <div>
-                  <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest mb-2 font-medium">
-                    // Original Message
-                  </div>
-                  <div className="font-sans text-sm leading-relaxed text-zinc-400 bg-[#121214] border border-white/5 p-4 rounded-lg max-h-[250px] overflow-y-auto whitespace-pre-wrap shadow-inner">
+                  <div className="text-[12px] font-semibold text-zinc-500 mb-2">Original message</div>
+                  <div className="text-[14px] leading-relaxed text-zinc-700 bg-white ring-1 ring-black/[0.06] p-4 rounded-2xl max-h-[250px] overflow-y-auto whitespace-pre-wrap shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
                     {a.email?.body || a.email?.snippet || '(no body)'}
                   </div>
                 </div>
@@ -177,27 +171,26 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                 {/* AI Draft */}
                 {a.draft_body && !isSent && canReview && (
                   <div>
-                    <div className="font-mono text-[10px] text-blue-400 uppercase tracking-widest mb-2 font-medium flex items-center justify-between">
-                      <span>// AI Draft</span>
-                      <span className="text-zinc-500 opacity-60">Editable</span>
+                    <div className="text-[12px] font-semibold text-[#0071e3] mb-2 flex items-center justify-between">
+                      <span>AI draft</span>
+                      <span className="text-zinc-400 font-medium">Editable</span>
                     </div>
                     <div
                       ref={draftRef}
                       contentEditable={a.status === 'pending' ? 'true' : 'false'}
                       suppressContentEditableWarning
-                      className="font-sans text-sm leading-relaxed text-zinc-200 bg-[#121214] border border-white/10 p-4 rounded-lg outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all shadow-inner"
+                      className="text-[14px] leading-relaxed text-zinc-900 bg-white ring-1 ring-black/[0.08] p-4 rounded-2xl outline-none focus:ring-2 focus:ring-[#0071e3] focus:shadow-[0_0_0_6px_rgba(0,113,227,0.12)] transition-all shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
                     >
                       {a.draft_body}
                     </div>
                   </div>
                 )}
 
-                {/* Status Read-only block */}
+                {/* Status read-only block */}
                 {(isSent || isEscalated || isFlagged) && (
                   <div>
-                    <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest mb-2 font-medium">// Status</div>
-                    <div className="font-sans text-sm leading-relaxed bg-[#121214] border border-white/5 p-4 rounded-lg shadow-inner"
-                      style={{ color: sm.text }}>
+                    <div className="text-[12px] font-semibold text-zinc-500 mb-2">Status</div>
+                    <div className={`text-[14px] leading-relaxed bg-white ring-1 ring-black/[0.06] p-4 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.04)] ${sm.tone}`}>
                       {isEscalated
                         ? '▲ This action was escalated to the human queue for manual review.'
                         : isFlagged
@@ -208,60 +201,57 @@ function ActionRow({ action, globalIdx, onUpdate }) {
                 )}
               </div>
 
-              {/* Integrations (Calendar / BRD) */}
+              {/* Calendar */}
               {hasCalendar && (
-                <div className="mt-4 p-3 rounded-lg border border-teal-500/20 bg-teal-500/5 font-sans text-sm flex items-center gap-2">
-                  <span className="text-teal-400">📅 Scheduled:</span>{' '}
-                  <span className="text-zinc-300 font-medium">{a.calendar_event.title}</span>
-                  <span className="text-zinc-500 text-xs ml-auto font-mono">{FT(a.calendar_event.start)}</span>
+                <div className="mt-4 px-4 py-3 rounded-2xl bg-teal-50 ring-1 ring-teal-200/70 text-[14px] flex items-center gap-2">
+                  <span className="text-teal-700 font-semibold">Scheduled:</span>{' '}
+                  <span className="text-zinc-800 font-medium">{a.calendar_event.title}</span>
+                  <span className="text-zinc-500 text-[12px] ml-auto">{FT(a.calendar_event.start)}</span>
                 </div>
               )}
 
               {a.calendar_error && (
-                <div className="mt-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 font-sans text-xs text-amber-300">
+                <div className="mt-3 px-4 py-3 rounded-2xl bg-amber-50 ring-1 ring-amber-200/70 text-[12px] text-amber-800">
                   Calendar error: {a.calendar_error}
                 </div>
               )}
 
-              {/* Action Buttons */}
+              {/* Action buttons */}
               {canReview && (
-                <div className="flex items-center gap-3 mt-6 flex-wrap pt-4 border-t border-white/5">
-                  {canReview && (
-                    <button
-                      onClick={handleApprove}
-                      disabled={approving}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg font-sans text-sm font-medium hover:bg-blue-500 transition-colors disabled:opacity-60 shadow-sm"
-                    >
-                      {approving ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><MailCheck size={16} /> Approve & Send</>}
-                    </button>
-                  )}
-                  {canReview && (
-                    <button
-                      onClick={handleReject}
-                      className="flex items-center gap-2 border border-rose-500/20 text-rose-400 hover:bg-rose-500/10 px-4 py-2.5 rounded-lg font-sans text-sm font-medium transition-colors ml-auto"
-                    >
-                      <XCircle size={16} /> Reject
-                    </button>
-                  )}
+                <div className="flex items-center gap-3 mt-6 flex-wrap pt-4 border-t border-black/[0.06]">
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving}
+                    className="rounded-full px-6 py-2.5 text-[14px] font-medium text-white shadow-[0_4px_14px_rgba(0,113,227,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,113,227,0.45)] active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
+                    style={{ background: 'linear-gradient(135deg, #3aa0ff 0%, #0071e3 100%)' }}
+                  >
+                    {approving ? 'Processing...' : 'Approve & Send'}
+                  </button>
+                  <button
+                    onClick={handleReject}
+                    className="ml-auto rounded-full bg-red-50 px-5 py-2.5 text-[14px] font-medium text-red-600 ring-1 ring-red-200/70 transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-100 active:scale-95"
+                  >
+                    Reject
+                  </button>
                 </div>
               )}
 
               {isEscalated && (
-                <div className="flex items-center gap-3 mt-6 pt-4 border-t border-white/5">
+                <div className="flex items-center gap-3 mt-6 pt-4 border-t border-black/[0.06]">
                   <a
                     href="https://mail.google.com"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-5 py-2.5 rounded-lg font-sans text-sm font-medium transition-colors border border-white/10 shadow-sm"
+                    className="rounded-full bg-white px-5 py-2.5 text-[14px] font-medium text-zinc-800 ring-1 ring-black/[0.1] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,0,0,0.10)] active:scale-95"
                   >
                     Open in Gmail ↗
                   </a>
                 </div>
               )}
 
-              <div className="font-mono text-[10px] text-zinc-600 mt-4 uppercase tracking-wider flex items-center justify-between">
+              <div className="text-[11px] text-zinc-400 mt-4 flex items-center justify-between">
                 <span>Created {FT(a.created_at)}</span>
-                <span>Priority Score: {a.urgency || 0}/100</span>
+                <span>Priority score: {a.urgency || 0}/100</span>
               </div>
             </div>
           )}
@@ -303,74 +293,80 @@ export default function Actions() {
 
   const sorted = [...filtered].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 
+  const filterIdx = Math.max(0, FILTERS.findIndex(f => f.id === filter))
+
   return (
-    <div className="min-h-screen pb-24 font-sans text-zinc-100 selection:bg-blue-500/30">
+    <div className="pb-24 text-zinc-900" style={{ fontFamily: FONT }}>
+      <style>{FX_CSS}</style>
 
       {/* HEADER */}
-      <div className="max-w-6xl mx-auto pt-12 px-6 lg:px-8 mb-8">
+      <div className="ac-rise mb-8 border-b border-black/[0.07] pb-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="font-mono text-[11px] text-zinc-500 uppercase tracking-widest mb-2 font-medium">Activity / History</div>
-            <h1 className="font-sans text-4xl font-semibold tracking-tight text-white">
+            <div className="mb-3 text-[13px] font-semibold text-[#0071e3]">Activity / History</div>
+            <h1
+              className="bg-clip-text text-[clamp(36px,6vw,60px)] font-semibold leading-[1.02] tracking-tight text-transparent"
+              style={{ backgroundImage: 'linear-gradient(90deg, #111114 0%, #4a4a58 100%)' }}
+            >
               Agent Actions
             </h1>
           </div>
-          
-          <div className="flex items-center gap-3 flex-wrap bg-[#0a0a0a] p-1.5 rounded-lg border border-white/5">
-            {/* Filter Pills */}
-            {FILTERS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`font-sans text-sm px-4 py-1.5 rounded-md transition-all font-medium ${
-                  filter === f.id
-                    ? 'bg-zinc-800 text-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-            
-            <div className="w-px h-6 bg-white/10 mx-1"></div>
-            
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Filter segmented control */}
+            <div className="relative grid grid-cols-4 rounded-2xl bg-[#f5f5f7] p-1 ring-1 ring-black/[0.05]" role="tablist" aria-label="Filter actions">
+              <span
+                className="ac-seg-ind absolute top-1 bottom-1 left-1 rounded-xl bg-white shadow-[0_2px_10px_rgba(0,0,0,0.12)]"
+                style={{ width: 'calc((100% - 8px) / 4)', transform: `translateX(${filterIdx * 100}%)` }}
+              />
+              {FILTERS.map(f => (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                  className={`relative z-10 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-medium transition-colors cursor-pointer ${filter === f.id ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-800'}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={load}
               disabled={loading}
-              className="px-3 py-1.5 text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+              className="rounded-full bg-white px-5 py-2.5 text-[13px] font-medium text-zinc-700 ring-1 ring-black/[0.08] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_rgba(0,0,0,0.10)] active:scale-95 disabled:opacity-50"
               aria-label="Refresh Data"
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
+              {loading ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         </div>
       </div>
 
       {/* ACTION FEED */}
-      <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <div className="bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-          {sorted.length > 0 ? (
-            <div className="flex flex-col">
-              {sorted.map((a, i) => (
-                <ActionRow
-                  key={a.id}
-                  action={a}
-                  globalIdx={i}
-                  onUpdate={() => setRev(r => r + 1)}
-                />
-              ))}
+      <div className="ac-rise bg-white ring-1 ring-black/[0.06] rounded-3xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.07)]" style={{ animationDelay: '100ms' }}>
+        {sorted.length > 0 ? (
+          <div className="flex flex-col">
+            {sorted.map((a, i) => (
+              <ActionRow
+                key={a.id}
+                action={a}
+                globalIdx={i}
+                onUpdate={() => setRev(r => r + 1)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-28 px-4 gap-2 bg-[#fafafc]">
+            <div className="text-[18px] font-semibold text-zinc-800">
+              {loading ? 'Fetching actions...' : `No ${filter === 'all' ? '' : filter + ' '}actions found`}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-32 px-4 gap-4 bg-[#0a0a0a]">
-              <div className="p-4 rounded-full bg-white/5 border border-white/5">
-                <CheckCircle2 size={32} className="text-zinc-600" />
-              </div>
-              <div className="font-sans text-lg text-zinc-400 font-medium">
-                {loading ? 'Fetching actions...' : `No ${filter === 'all' ? '' : filter + ' '}actions found`}
-              </div>
+            <div className="text-[14px] text-zinc-400">
+              {loading ? 'Loading the latest agent activity' : 'Agent activity will show up here'}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
